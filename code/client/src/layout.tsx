@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { client } from "@/api/client";
+import { client, User } from "@/api/client";
 import {
   Code2, Home, BookOpen, Play, LayoutDashboard, Users,
   Menu, X, LogOut, Star, Flame
@@ -20,7 +20,7 @@ const NAV = [
 const HIDDEN_NAV_PAGES = ["Auth", "Visualizer"];
 
 export default function Layout({ children, currentPageName }: LayoutProps) {
-  const [user, setUser] = useState<Record<string, unknown> | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
@@ -75,12 +75,12 @@ export default function Layout({ children, currentPageName }: LayoutProps) {
             {user ? (
               <div className="flex items-center gap-3">
                 <div className="hidden sm:flex items-center gap-2 text-xs">
-                  <span className="flex items-center gap-1 text-amber-400"><Star className="w-3 h-3" />{((user?.xp as number) ?? 0).toLocaleString()}</span>
-                  <span className="flex items-center gap-1 text-rose-400"><Flame className="w-3 h-3" />{(user?.streak as number) ?? 0}</span>
+                  <span className="flex items-center gap-1 text-amber-400"><Star className="w-3 h-3" />{(user?.xp ?? 0).toLocaleString()}</span>
+                  <span className="flex items-center gap-1 text-rose-400"><Flame className="w-3 h-3" />{user?.streak ?? 0}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center text-xs font-bold">
-                    {(user?.full_name as string)?.[0] ?? "U"}
+                    {user?.full_name?.[0] ?? user?.displayName?.[0] ?? "U"}
                   </div>
                   <button
                     onClick={() => client.auth.logout()}

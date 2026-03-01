@@ -5,6 +5,8 @@ import requestIdPlugin from "./plugins/request-id.js";
 import envelopePlugin from "./plugins/envelope.js";
 import healthRoutes from "./routes/health.js";
 import adminRoutes from "./routes/admin.js";
+import authPlugin from "./plugins/auth.js";
+import authRoutes from "./routes/auth.js";
 import prisma from "./config/database.js";
 import redis from "./config/redis.js";
 
@@ -21,10 +23,12 @@ async function start() {
   });
   await app.register(requestIdPlugin);
   await app.register(envelopePlugin);
+  await app.register(authPlugin);
 
   // Register routes
   await app.register(healthRoutes);
   await app.register(adminRoutes);
+  await app.register(authRoutes);
 
   // Global error handler
   app.setErrorHandler((error: Error & { statusCode?: number }, _request, reply) => {
