@@ -1,0 +1,47 @@
+services:
+  ollama:
+    image: ollama/ollama:0.15.6
+    container_name: firefly-ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_models:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - firefly
+
+  ollama-init:
+    image: ollama/ollama:0.15.6
+    container_name: firefly-ollama-init
+    environment:
+      OLLAMA_BASE_URL: "http://ollama:11434"
+      OLLAMA_MODELS: "${OLLAMA_MODELS:-qwen2.5-coder:1.5b,llama3.2:1b,tinydolphin,tinyllama}"
+    entrypoint: /bin/sh
+    command: ["-c", "for model in $$(echo \"$$OLLAMA_MODELS\" | tr ',' ' '); do OLLAMA_HOST=http://ollama:11434 ollama pull \"$$model\"; done"]
+    volumes:
+      - ollama_models:/root/.ollama
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - firefly
+
+  server:
+    environment:
+      LLM_PROVIDER: ollama
+      LLM_BASE_URL: http://ollama:11434
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+volumes:
+  ollama_models:

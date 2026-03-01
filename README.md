@@ -43,7 +43,7 @@ FireFly is a web platform where children learn to code by writing real programs,
 └─────────────┘ └───────────┘ └────────────┘ └─────────────┘
 ```
 
-All 7 services run via Docker Compose. See [Deployment Guide](docs/guides/deployment.md) for details.
+The full stack builds and runs via Docker Compose and is accessible at `https://localhost:9443`. See [Deployment Guide](docs/guides/deployment.md) for details.
 
 ## Tech Stack
 
@@ -58,7 +58,7 @@ All 7 services run via Docker Compose. See [Deployment Guide](docs/guides/deploy
 | ORM | Prisma with PostgreSQL (`@prisma/adapter-pg`) |
 | Auth | OIDC via `ghcr.io/plainscope/simple-oidc-provider` + JWT (access 15min, refresh 7d) |
 | Code Execution | Self-hosted Judge0 with Python `sys.settrace()` tracer |
-| AI / LLM | OpenAI-compatible API via LM Studio (localhost:1234) |
+| AI / LLM | OpenAI-compatible API via LM Studio or Ollama |
 | Cache | Redis (PKCE verifiers, sessions) |
 | Infrastructure | Docker Compose (7 services) |
 
@@ -128,7 +128,7 @@ FireFly/
 - [Docker](https://www.docker.com/) and Docker Compose
 - [Git](https://git-scm.com/)
 - [Node.js](https://nodejs.org/) ≥ 20 (only for local development without Docker)
-- [LM Studio](https://lmstudio.ai/) (optional, for AI features)
+- [LM Studio](https://lmstudio.ai/) or [Ollama](https://ollama.com/) (optional, for AI features)
 
 ### Quick Start (Docker Compose)
 
@@ -141,18 +141,21 @@ cp .env.example .env
 # Start all 7 services
 docker compose up -d
 
+# Optional: include Ollama services (ollama + ollama-init)
+docker compose -f docker-compose.yml -f docker-compose.ollama.yml --profile ollama up -d
+
 # Seed sample data (concepts, lessons, exercises)
-curl -X POST -k https://localhost:8443/api/v1/admin/seed
+curl -X POST -k https://localhost:9443/api/v1/admin/seed
 
 # Open the app (note: accept the self-signed certificate warning)
-open https://localhost:8443
+open https://localhost:9443
 ```
 
-**Security Note**: The app uses a self-signed TLS certificate for local development. Your browser will show a security warning — click "Advanced" → "Proceed to localhost (unsafe)" to continue. All traffic is encrypted through nginx TLS termination on port 8443.
+**Security Note**: The app uses a self-signed TLS certificate for local development. Your browser will show a security warning — click "Advanced" → "Proceed to localhost (unsafe)" to continue. All traffic is encrypted through nginx TLS termination on port 9443.
 
 ### Default Login Credentials
 
-The OIDC provider is pre-configured with a test account:
+Authentication test credentials are defined in `config/oidc/users.json`. The default test account is:
 
 - **Email**: `admin@localhost`
 - **Password**: `Divide-30-Weight`
@@ -180,7 +183,23 @@ npm run dev    # Vite on http://localhost:5173 (proxies /api to :3000)
 
 ### Enable AI Features
 
-Start [LM Studio](https://lmstudio.ai/), load a model, and start the local server on port 1234. The app connects automatically via the `LLM_BASE_URL` environment variable.
+Use either [LM Studio](https://lmstudio.ai/) or [Ollama](https://ollama.com/) as an OpenAI-compatible local model host.
+
+- **LM Studio**: load a model and start the local server on port `1234` (for example `http://host.docker.internal:1234/v1`).
+- **Ollama**: pull and run a model, then expose an OpenAI-compatible endpoint (for example `http://host.docker.internal:11434/v1`).
+
+To run Ollama inside this repository's Docker Compose stack, start with the `ollama` profile:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.ollama.yml --profile ollama up -d
+```
+
+When the server runs in Docker Compose with that profile, set:
+
+- `LLM_PROVIDER=ollama`
+- `LLM_BASE_URL=http://ollama:11434`
+
+Set `LLM_BASE_URL` to the endpoint for your chosen provider.
 
 ### Environment Variables
 
@@ -196,7 +215,7 @@ The `.env.example` file contains all 17 required variables. Key settings:
 | `OIDC_REDIRECT_URI` | `http://localhost:3000/api/v1/auth/callback` | OAuth callback URL |
 | `JWT_SECRET` | — | Secret key for JWT signing |
 | `LLM_PROVIDER` | `openai` | LLM provider type |
-| `LLM_BASE_URL` | `http://host.docker.internal:1234/v1` | LM Studio endpoint |
+| `LLM_BASE_URL` | `http://host.docker.internal:1234/v1` | OpenAI-compatible endpoint (LM Studio or Ollama) |
 | `CLIENT_ORIGIN` | `http://localhost:80` | CORS origin for the client |
 | `VITE_API_URL` | `http://localhost:3000/api/v1` | API URL for the client |
 
@@ -273,7 +292,7 @@ The core feature — an interactive, step-through visualization of Python code e
 
 - Three modes: **explain** (code explanation), **hint** (guided help without solutions), **chat** (open conversation)
 - Age-adapted system prompts automatically adjust language complexity
-- Powered by any OpenAI-compatible API (LM Studio recommended for local development)
+- Powered by any OpenAI-compatible API (LM Studio or Ollama for local development)
 
 ### Adaptive Theming
 
@@ -368,6 +387,7 @@ FireFly is built on the shoulders of brilliant open-source projects and tools:
 **AI & Learning**
 - [OpenAI API](https://openai.com/api/) — LLM foundation
 - [LM Studio](https://lmstudio.ai/) — Local LLM inference
+- [Ollama](https://ollama.com/) — Local model hosting
 - [Python Tutor](https://pythontutor.com/) — Inspiration for the visual code stepper
 
 **Development & Tooling**

@@ -27,27 +27,56 @@ async function callLLM(
 ): Promise<string> {
   const { maxTokens = 512, temperature = 0.7 } = options;
 
-  const response = await fetch(`${env.LLM_BASE_URL}/v1/chat/completions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "default",
-      messages,
-      max_tokens: maxTokens,
-      temperature,
-    }),
-  });
+  if (env.LLM_PROVIDER === "ollama") {
+    // Use Ollama's native API
+    const response = await fetch(`${env.LLM_BASE_URL}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "tinyllama",
+        messages,
+        stream: false,
+        options: {
+          temperature,
+          num_predict: maxTokens,
+        },
+      }),
+    });
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`LLM request failed (${response.status}): ${text}`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Ollama request failed (${response.status}): ${text}`);
+    }
+
+    const data = (await response.json()) as {
+      message: { content: string };
+    };
+
+    return data.message?.content ?? "";
+  } else {
+    // Use OpenAI-compatible API (LM Studio, etc.)
+    const response = await fetch(`${env.LLM_BASE_URL}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "default",
+        messages,
+        max_tokens: maxTokens,
+        temperature,
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`LLM request failed (${response.status}): ${text}`);
+    }
+
+    const data = (await response.json()) as {
+      choices: Array<{ message: { content: string } }>;
+    };
+
+    return data.choices?.[0]?.message?.content ?? "";
   }
-
-  const data = (await response.json()) as {
-    choices: Array<{ message: { content: string } }>;
-  };
-
-  return data.choices?.[0]?.message?.content ?? "";
 }
 
 function getSystemPrompt(mode?: string, userAge?: number): string {

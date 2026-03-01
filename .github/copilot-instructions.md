@@ -8,6 +8,8 @@ Use these instructions for all code generation and edits in this repository.
 	- `code/client`: React + Vite + Tailwind SPA
 	- `code/server`: Fastify + Prisma + PostgreSQL API
 - Primary product features: visual code stepper, mastery tracking (BKT), adaptive theme modes (Fun/Balanced/Pro), OIDC-based auth, AI explain/hint/chat.
+- Full stack runs via Docker Compose and is accessible at `https://localhost:9443`.
+- Authentication test credentials are defined in `config/oidc/users.json`.
 
 ## Non-negotiable rules
 

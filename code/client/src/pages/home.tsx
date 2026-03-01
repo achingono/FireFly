@@ -70,7 +70,7 @@ export default function Home() {
               <div className="w-3 h-3 rounded-full bg-red-500/70" />
               <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
               <div className="w-3 h-3 rounded-full bg-green-500/70" />
-              <span className="text-slate-500 text-xs ml-3 font-mono">codespark.academy/visualizer</span>
+              <span className="text-slate-500 text-xs ml-3 font-mono">firefly/visualizer</span>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-white/5 min-h-[200px]">
               {["CODE", "STACK", "HEAP", "OUTPUT"].map((pane) => (

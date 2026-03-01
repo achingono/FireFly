@@ -169,6 +169,28 @@ docker compose down
 docker compose down -v
 ```
 
+### Full Stack with Ollama profile
+
+Use the optional `ollama` profile to start the local Ollama runtime and model initializer alongside the core stack:
+
+```bash
+# Start core services + ollama profile services
+docker compose -f docker-compose.yml -f docker-compose.ollama.yml --profile ollama up -d
+
+# Tail ollama logs
+docker compose logs -f ollama
+
+# Stop everything started with this profile
+docker compose -f docker-compose.yml -f docker-compose.ollama.yml --profile ollama down
+```
+
+Recommended server environment when using in-stack Ollama:
+
+```bash
+LLM_PROVIDER=ollama
+LLM_BASE_URL=http://ollama:11434
+```
+
 ### Build and Restart
 
 ```bash
@@ -223,6 +245,10 @@ JWT_REFRESH_EXPIRES_IN=7d
 # AI
 LLM_PROVIDER=lmstudio
 LLM_BASE_URL=http://host.docker.internal:1234
+
+# AI (with docker compose -f docker-compose.yml -f docker-compose.ollama.yml --profile ollama)
+# LLM_PROVIDER=ollama
+# LLM_BASE_URL=http://ollama:11434
 
 # Client
 CLIENT_ORIGIN=http://localhost:80

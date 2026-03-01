@@ -187,7 +187,7 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
       LLM_PROVIDER: ${LLM_PROVIDER:-lmstudio}
-      LLM_BASE_URL: http://host.docker.internal:1234
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:1234}
       CLIENT_ORIGIN: https://localhost:${PROXY_HTTPS_PORT:-9443}
     extra_hosts:
       - "host.docker.internal:host-gateway"
