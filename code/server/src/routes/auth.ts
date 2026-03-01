@@ -140,7 +140,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
       });
 
       // Redirect to client with token (client will store it)
-      const clientRedirect = new URL("http://localhost:5173/auth/callback");
+      const clientRedirect = new URL(`${env.CLIENT_ORIGIN}/auth/callback`);
       clientRedirect.searchParams.set("token", accessToken);
       clientRedirect.searchParams.set("onboarded", user.onboarded ? "true" : "false");
 
