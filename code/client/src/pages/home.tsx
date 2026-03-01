@@ -39,7 +39,7 @@ export default function Home() {
             </span>
           </h1>
           <p className="text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            CodeSpark Academy visualizes every step of your code — stack frames, heap objects, variable changes — with AI explanations tailored to your age.
+            FireFly visualizes every step of your code — stack frames, heap objects, variable changes — with AI explanations tailored to your age.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to={createPageUrl("Visualizer")}>
