@@ -107,6 +107,8 @@ model Exercise {
   rubric        Json        @default("{}")
   difficulty    Difficulty  @default(beginner)
   language      String      @default("python")
+  solutionCode String?  @db.Text
+  hints        String[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
