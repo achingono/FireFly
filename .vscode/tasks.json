@@ -1,4 +1,5 @@
 {
+    "version": "2.0.0",
     "tasks": [
         {
             "label": "docker: build",
@@ -6,7 +7,286 @@
             "args": [
                 "compose",
                 "build"
-            ]
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "docker: up",
+            "command": "docker",
+            "args": [
+                "compose",
+                "up",
+                "-d"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "docker: up --build",
+            "command": "docker",
+            "args": [
+                "compose",
+                "up",
+                "-d",
+                "--build"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "docker: up --force-recreate",
+            "command": "docker",
+            "args": [
+                "compose",
+                "up",
+                "-d",
+                "--build",
+                "--force-recreate"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "docker: up infrastructure",
+            "command": "docker",
+            "args": [
+                "compose",
+                "up",
+                "-d",
+                "postgres",
+                "redis",
+                "judge0",
+                "judge0-workers",
+                "oidc"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "docker: up client server",
+            "command": "docker",
+            "args": [
+                "compose",
+                "up",
+                "-d",
+                "--build",
+                "client",
+                "server",
+                "nginx"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "docker: down",
+            "command": "docker",
+            "args": [
+                "compose",
+                "down"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "docker: down --volumes",
+            "command": "docker",
+            "args": [
+                "compose",
+                "down",
+                "--volumes"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "docker: restart",
+            "command": "docker",
+            "args": [
+                "compose",
+                "restart"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "docker: restart client server",
+            "command": "docker",
+            "args": [
+                "compose",
+                "restart",
+                "client",
+                "server",
+                "nginx"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "docker: logs",
+            "command": "docker",
+            "args": [
+                "compose",
+                "logs"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "docker: logs --follow",
+            "command": "docker",
+            "args": [
+                "compose",
+                "logs",
+                "-f"
+            ],
+            "isBackground": true,
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "docker: logs client",
+            "command": "docker",
+            "args": [
+                "compose",
+                "logs",
+                "-f",
+                "client"
+            ],
+            "isBackground": true,
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "docker: logs server",
+            "command": "docker",
+            "args": [
+                "compose",
+                "logs",
+                "-f",
+                "server"
+            ],
+            "isBackground": true,
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "docker: ps",
+            "command": "docker",
+            "args": [
+                "compose",
+                "ps"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "docker: pull",
+            "command": "docker",
+            "args": [
+                "compose",
+                "pull"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "docker: prune",
+            "command": "docker",
+            "args": [
+                "system",
+                "prune",
+                "-f"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "docker: exec server bash",
+            "command": "docker",
+            "args": [
+                "compose",
+                "exec",
+                "server",
+                "bash"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "docker: exec client sh",
+            "command": "docker",
+            "args": [
+                "compose",
+                "exec",
+                "client",
+                "sh"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
         }
     ]
 }
