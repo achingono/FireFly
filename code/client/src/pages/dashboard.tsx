@@ -82,12 +82,32 @@ export default function Dashboard() {
               {streak > 0 ? "Keep up your streak — you're on a roll." : "Start learning to build your streak!"}
             </p>
           </div>
-          <Link to={createPageUrl("Visualizer")}>
-            <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm transition-colors">
-              <Play className="w-4 h-4" />
-              Continue Learning
-            </button>
-          </Link>
+          {(() => {
+            // Try to find an in-progress concept (started but not mastered)
+            const inProgressConcept = concepts.find((c) => c.attempts > 0 && !c.mastered);
+            // Otherwise use the first mastered or not-started concept
+            const nextConcept = inProgressConcept || concepts.find((c) => !c.mastered);
+            
+            if (nextConcept) {
+              return (
+                <Link to={`${createPageUrl("Exercise")}?conceptId=${nextConcept.conceptId}`}>
+                  <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm transition-colors">
+                    <Play className="w-4 h-4" />
+                    Continue Learning
+                  </button>
+                </Link>
+              );
+            }
+            // If all concepts are mastered, also accept going to Visualizer
+            return (
+              <Link to={createPageUrl("Visualizer")}>
+                <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm transition-colors">
+                  <Play className="w-4 h-4" />
+                  Continue Learning
+                </button>
+              </Link>
+            );
+          })()}
         </div>
 
         {/* Stats row */}

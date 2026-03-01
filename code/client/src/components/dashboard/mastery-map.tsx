@@ -1,5 +1,7 @@
 import { motion } from "framer-motion";
 import { CheckCircle2, Circle, Clock, Lock } from "lucide-react";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 
 interface ProgressItem {
   conceptId: string;
@@ -40,13 +42,14 @@ export default function MasteryMap({ progress }: MasteryMapProps) {
           const effectiveStatus = p.locked ? "locked" : p.status;
           const sc = STATUS_CONFIG[effectiveStatus as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.not_started;
           const Icon = sc.icon;
-          return (
+          
+          const card = (
             <motion.div
               key={p.conceptId}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.06 }}
-              className={`rounded-xl border ${sc.border} bg-card p-4 relative overflow-hidden ${p.locked ? "opacity-50" : ""}`}
+              className={`rounded-xl border ${sc.border} bg-card p-4 relative overflow-hidden ${p.locked ? "opacity-50" : ""} ${!p.locked ? "cursor-pointer hover:shadow-lg hover:scale-105 transition-all" : ""}`}
             >
               <div className={`absolute inset-0 bg-gradient-to-br ${sc.color} opacity-5`} />
               <div className="relative">
@@ -68,6 +71,14 @@ export default function MasteryMap({ progress }: MasteryMapProps) {
                 </div>
               </div>
             </motion.div>
+          );
+          
+          return !p.locked ? (
+            <Link key={p.conceptId} to={createPageUrl(`Exercise?conceptId=${p.conceptId}`)}>
+              {card}
+            </Link>
+          ) : (
+            card
           );
         })}
       </div>
