@@ -1,40 +1,37 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { client, setToken, getToken, type User } from "@/api/client";
 
-export interface AuthUser {
-  id: string;
-  email: string;
-  full_name?: string;
-  role?: string;
-  age?: number;
-  xp?: number;
-  level?: number;
-  streak?: number;
-}
+// Re-export User as AuthUser for backward compat
+export type AuthUser = User;
 
 export interface AuthContextType {
   isLoadingAuth: boolean;
   isLoadingPublicSettings: boolean;
   isAuthenticated: boolean;
   authError: { type: string; message?: string } | null;
-  user: AuthUser | null;
+  user: User | null;
   navigateToLogin: () => void;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   appLogs: unknown[];
   auth: {
-    me: () => Promise<AuthUser | null>;
+    me: () => Promise<User | null>;
     logout: () => Promise<void>;
     redirectToLogin: () => void;
-    login: (email: string, password: string) => Promise<AuthUser | null>;
-    register: (data: Record<string, unknown>) => Promise<AuthUser | null>;
+    login: (email: string, password: string) => Promise<User | null>;
+    register: (data: Record<string, unknown>) => Promise<User | null>;
   };
 }
 
 const defaultAuth: AuthContextType = {
-  isLoadingAuth: false,
+  isLoadingAuth: true,
   isLoadingPublicSettings: false,
   isAuthenticated: false,
   authError: null,
   user: null,
   navigateToLogin: () => {},
+  logout: async () => {},
+  refreshUser: async () => {},
   appLogs: [],
   auth: {
     me: async () => null,
@@ -48,8 +45,82 @@ const defaultAuth: AuthContextType = {
 export const AuthContext = createContext<AuthContextType>(defaultAuth);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [authError, setAuthError] = useState<{ type: string; message?: string } | null>(null);
+
+  const loadUser = useCallback(async () => {
+    // Check for token in URL (OIDC callback)
+    const params = new URLSearchParams(window.location.search);
+    const tokenFromUrl = params.get("token");
+    if (tokenFromUrl) {
+      setToken(tokenFromUrl);
+      // Clean URL without page reload
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, "", cleanUrl);
+    }
+
+    const token = getToken();
+    if (!token) {
+      setIsLoadingAuth(false);
+      return;
+    }
+
+    try {
+      const u = await client.auth.me();
+      setUser(u);
+      setAuthError(null);
+    } catch {
+      setToken(null);
+      setUser(null);
+    } finally {
+      setIsLoadingAuth(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadUser();
+  }, [loadUser]);
+
+  const navigateToLogin = useCallback(() => {
+    client.auth.redirectToLogin();
+  }, []);
+
+  const logout = useCallback(async () => {
+    await client.auth.logout();
+    setUser(null);
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    try {
+      const u = await client.auth.me();
+      setUser(u);
+    } catch {
+      // silent
+    }
+  }, []);
+
+  const value: AuthContextType = {
+    isLoadingAuth,
+    isLoadingPublicSettings: false,
+    isAuthenticated: !!user,
+    authError,
+    user,
+    navigateToLogin,
+    logout,
+    refreshUser,
+    appLogs: [],
+    auth: {
+      me: client.auth.me,
+      logout,
+      redirectToLogin: client.auth.redirectToLogin,
+      login: client.auth.login,
+      register: client.auth.register,
+    },
+  };
+
   return (
-    <AuthContext.Provider value={defaultAuth}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

@@ -17,7 +17,7 @@ const NAV = [
   { label: "Teacher", page: "TeacherDashboard", icon: Users, auth: true, role: "teacher" },
 ];
 
-const HIDDEN_NAV_PAGES = ["Auth", "Visualizer"];
+const HIDDEN_NAV_PAGES = ["Auth", "Onboarding", "Visualizer"];
 
 export default function Layout({ children, currentPageName }: LayoutProps) {
   const [user, setUser] = useState<User | null>(null);

@@ -55,11 +55,13 @@ import Exercise from './pages/exercise';
 import Dashboard from './pages/dashboard';
 import TeacherDashboard from './pages/teacher';
 import __Layout from './layout';
+import Onboarding from './pages/onboarding';
 
 
 export const PAGES = {
     "Home": Home,
     "Auth": Auth,
+    "Onboarding": Onboarding,
     "Visualizer": Visualizer,
     "Curriculum": Curriculum,
     "Exercise": Exercise,
