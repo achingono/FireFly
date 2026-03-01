@@ -191,7 +191,9 @@ const curriculumRoutes: FastifyPluginAsync = async (fastify) => {
       description?: string;
       conceptTags?: string[];
       starterCode?: string;
+      solutionCode?: string;
       testCases?: unknown[];
+      hints?: string[];
       difficulty?: string;
       language?: string;
       lessonId?: string;
@@ -200,7 +202,7 @@ const curriculumRoutes: FastifyPluginAsync = async (fastify) => {
     "/api/v1/exercises",
     { preHandler: [fastify.requireRole("teacher", "admin")] },
     async (request, reply) => {
-      const { title, description, conceptTags, starterCode, testCases, difficulty, language, lessonId } = request.body;
+      const { title, description, conceptTags, starterCode, solutionCode, testCases, hints, difficulty, language, lessonId } = request.body;
 
       const exercise = await prisma.exercise.create({
         data: {
@@ -208,12 +210,13 @@ const curriculumRoutes: FastifyPluginAsync = async (fastify) => {
           description,
           conceptTags: conceptTags ?? [],
           starterCode: starterCode ?? "",
+          solutionCode: solutionCode ?? null,
           testCases: JSON.stringify(testCases ?? []),
+          hints: hints ?? [],
           difficulty: (difficulty as "beginner" | "intermediate" | "advanced") ?? "beginner",
           language: language ?? "python",
         },
       });
-
       // If lessonId provided, link exercise to lesson
       if (lessonId) {
         await prisma.lesson_Exercise.create({
