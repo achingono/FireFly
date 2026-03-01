@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Editor from "@monaco-editor/react";
-import { client, execution, progress, MasteryUpdateResponse } from "@/api/client";
+import { client, execution, progress, ai, MasteryUpdateResponse } from "@/api/client";
 import { Link, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { ChevronLeft, Play, Lightbulb, CheckCircle2, XCircle, Loader2, Eye, ArrowLeft } from "lucide-react";
@@ -170,7 +170,7 @@ function ExerciseList({ conceptId }: { conceptId: string | null }) {
 // ─── Single Exercise ────────────────────────────────────────────
 
 function SingleExercise({ exerciseId }: { exerciseId: string }) {
-  const { isPro } = useTheme();
+  const { isPro, mode } = useTheme();
   const { user } = useAuth();
   const [exercise, setExercise] = useState<Exercise | null>(null);
   const [code, setCode] = useState("");
@@ -268,14 +268,16 @@ function SingleExercise({ exerciseId }: { exerciseId: string }) {
     if (!exercise) return;
     setLoadingAiHint(true);
     try {
-      const res = await client.integrations.Core.InvokeLLM({
+      const res = await ai.hint({
         prompt: `A student is working on this Python exercise: "${exercise.title}". 
 Their current code is:
 \`\`\`${exercise.language}
 ${code}
 \`\`\`
 
-Give a short, encouraging hint (1-2 sentences) without giving away the solution. The student is age 10-13.`,
+Give a short, encouraging hint (1-2 sentences) without giving away the solution.`,
+        mode,
+        context: `Exercise: ${exercise.title}\nDifficulty: ${exercise.difficulty}\nLanguage: ${exercise.language}`,
       });
       setAiHint(res);
     } catch {

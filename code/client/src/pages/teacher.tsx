@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { client } from "@/api/client";
+import { ai } from "@/api/client";
 import { Users, TrendingUp, AlertCircle, BookOpen, Award, Eye, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
@@ -35,8 +35,9 @@ export default function TeacherDashboard() {
 
   const getClassInsight = async () => {
     setLoadingInsight(true);
-    const res = await client.integrations.Core.InvokeLLM({
-      prompt: `You are an AI teaching assistant analyzing a class of 5 students learning programming. Here is their data:
+    try {
+      const res = await ai.chat({
+        prompt: `You are an AI teaching assistant analyzing a class of 5 students learning programming. Here is their data:
 - 2 students are on track (avg mastery 66%)
 - 2 students need help (avg mastery 31%)
 - 1 student is excelling (91% mastery)
@@ -44,9 +45,15 @@ export default function TeacherDashboard() {
 - 3 students have broken streak (no activity >2 days)
 
 Provide a brief, actionable 2-3 sentence teaching insight for the teacher. Focus on what to prioritize this week.`,
-    });
-    setInsight(res);
-    setLoadingInsight(false);
+        mode: "pro",
+        context: "Teacher dashboard — class overview analysis",
+      });
+      setInsight(res);
+    } catch {
+      setInsight("AI insights are not available right now. Please try again later.");
+    } finally {
+      setLoadingInsight(false);
+    }
   };
 
   const classAvg = Math.round(students.reduce((s, st) => s + st.masteryScore, 0) / students.length);

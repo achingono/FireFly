@@ -212,7 +212,49 @@ const entities = new Proxy({} as Record<string, EntityMethods>, {
   get: (_target, prop) => createEntityMethods(String(prop)),
 });
 
-// ─── Integrations ────────────────────────────────────────────────
+// ─── AI API ───────────────────────────────────────────────────────
+
+export interface AiRequestParams {
+  prompt: string;
+  mode?: string;
+  userAge?: number;
+  context?: string;
+}
+
+export interface AiChatParams extends AiRequestParams {
+  messages?: Array<{ role: "user" | "assistant"; content: string }>;
+}
+
+export const ai = {
+  /** Explain a trace step */
+  explain: async (params: AiRequestParams): Promise<string | null> => {
+    const envelope = await request<{ response: string }>("/ai/explain", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
+    return envelope.data?.response ?? null;
+  },
+
+  /** Generate a hint for an exercise */
+  hint: async (params: AiRequestParams): Promise<string | null> => {
+    const envelope = await request<{ response: string }>("/ai/hint", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
+    return envelope.data?.response ?? null;
+  },
+
+  /** General AI tutor chat */
+  chat: async (params: AiChatParams): Promise<string | null> => {
+    const envelope = await request<{ response: string }>("/ai/chat", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
+    return envelope.data?.response ?? null;
+  },
+};
+
+// ─── Integrations (backward-compatible) ─────────────────────────
 
 const integrations = {
   Core: {
@@ -220,11 +262,7 @@ const integrations = {
       prompt: string;
       response_type?: string;
     }): Promise<string | null> => {
-      const envelope = await request<{ response: string }>("/ai/explain", {
-        method: "POST",
-        body: JSON.stringify(params),
-      });
-      return envelope.data?.response ?? null;
+      return ai.explain({ prompt: params.prompt });
     },
   },
 };

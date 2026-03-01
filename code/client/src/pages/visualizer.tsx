@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { client, execution } from "@/api/client";
+import { client, execution, ai } from "@/api/client";
 import { useAuth } from "@/lib/AuthContext";
 import { useTheme } from "@/lib/ThemeContext";
 import CodePane from "@/components/visualizer/code-pane";
@@ -235,7 +235,7 @@ export default function Visualizer() {
   const exerciseIdParam = searchParams.get("exerciseId");
   const jobIdParam = searchParams.get("jobId");
   const { user } = useAuth();
-  const { isFun, isPro } = useTheme();
+  const { mode, isFun, isPro } = useTheme();
 
   const [code, setCode] = useState(STARTER_PROGRAMS.python);
   const [language, setLanguage] = useState("python");
@@ -371,15 +371,11 @@ export default function Visualizer() {
     setLoadingAi(true);
     setAiExplanation(null);
     try {
-      const res = await client.integrations.Core.InvokeLLM({
-        prompt: `You are a coding tutor for a ${ageProfile} year old student. Explain what is happening at this code execution step in a friendly, age-appropriate way. Keep it to 2-3 sentences max. Use a simple analogy if helpful.
-
-Code line: ${currentFrame.file} line ${currentFrame.line}
-Event: ${currentFrame.event}
-Stack variables: ${JSON.stringify(currentFrame.stack?.[0]?.locals ?? {})}
-Stdout so far: "${currentFrame.stdout || "none"}"
-
-Tone: friendly, encouraging, ${ageProfile === "8-10" ? "very simple with emojis" : ageProfile === "11-13" ? "casual and clear" : "technical but approachable"}`,
+      const res = await ai.explain({
+        prompt: `Explain what is happening at this code execution step in a friendly, age-appropriate way. Keep it to 2-3 sentences max. Use a simple analogy if helpful.`, 
+        mode,
+        userAge: user?.age ?? undefined,
+        context: `Code line: ${currentFrame.file} line ${currentFrame.line}\nEvent: ${currentFrame.event}\nStack variables: ${JSON.stringify(currentFrame.stack?.[0]?.locals ?? {})}\nStdout so far: "${currentFrame.stdout || "none"}"`,
       });
       setAiExplanation(res);
     } catch {
@@ -387,7 +383,7 @@ Tone: friendly, encouraging, ${ageProfile === "8-10" ? "very simple with emojis"
     } finally {
       setLoadingAi(false);
     }
-  }, [currentFrame, ageProfile]);
+  }, [currentFrame, mode, user?.age]);
 
   // ─── Language change ───────────────────────────────────────────
 
