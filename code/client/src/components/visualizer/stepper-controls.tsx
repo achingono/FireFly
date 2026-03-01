@@ -4,6 +4,16 @@ import {
   Play, Pause, Sparkles
 } from "lucide-react";
 
+interface StepperControlsProps {
+  currentStep: number;
+  totalFrames: number;
+  onStep: (val: number | ((prev: number) => number)) => void;
+  isPlaying: boolean;
+  setIsPlaying: (v: boolean) => void;
+  onExplain: () => void;
+  currentFrame: { line: number; event: string; file?: string; stack?: unknown[]; stdout?: string } | null;
+}
+
 const EVENT_COLORS = {
   call: "bg-violet-500/20 text-violet-300 border-violet-500/30",
   return: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
@@ -15,13 +25,13 @@ const EVENT_COLORS = {
 
 export default function StepperControls({
   currentStep, totalFrames, onStep, isPlaying, setIsPlaying, onExplain, currentFrame
-}) {
-  const timerRef = useRef(null);
+}: StepperControlsProps) {
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (isPlaying) {
       timerRef.current = setInterval(() => {
-        onStep(prev => {
+        onStep((prev: number) => {
           if (prev >= totalFrames - 1) {
             setIsPlaying(false);
             return prev;
@@ -30,14 +40,14 @@ export default function StepperControls({
         });
       }, 600);
     } else {
-      clearInterval(timerRef.current);
+      if (timerRef.current) clearInterval(timerRef.current);
     }
-    return () => clearInterval(timerRef.current);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [isPlaying, totalFrames]);
 
   const progress = totalFrames > 1 ? (currentStep / (totalFrames - 1)) * 100 : 0;
   const event = currentFrame?.event ?? "line";
-  const eventClass = EVENT_COLORS[event] ?? EVENT_COLORS.line;
+  const eventClass = EVENT_COLORS[event as keyof typeof EVENT_COLORS] ?? EVENT_COLORS.line;
 
   return (
     <div className="border-t border-white/8 bg-[#0d0d14] px-5 py-3">
@@ -67,7 +77,7 @@ export default function StepperControls({
             <SkipBack className="w-4 h-4" />
           </button>
           <button
-            onClick={() => onStep(s => Math.max(0, s - 1))}
+            onClick={() => onStep((s: number) => Math.max(0, s - 1))}
             disabled={currentStep === 0}
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/8 disabled:opacity-30 transition-colors"
           >
@@ -80,7 +90,7 @@ export default function StepperControls({
             {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
           </button>
           <button
-            onClick={() => onStep(s => Math.min(totalFrames - 1, s + 1))}
+            onClick={() => onStep((s: number) => Math.min(totalFrames - 1, s + 1))}
             disabled={currentStep >= totalFrames - 1}
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/8 disabled:opacity-30 transition-colors"
           >

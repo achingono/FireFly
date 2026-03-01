@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import Editor from "@monaco-editor/react";
 import { client } from "@/api/client";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -34,11 +35,15 @@ export default function Exercise() {
   const [exercise] = useState(MOCK_EXERCISE);
   const [code, setCode] = useState(MOCK_EXERCISE.starterCode);
   const [submitting, setSubmitting] = useState(false);
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState<{
+    status: string;
+    score: number;
+    testResults: { passed: boolean; input: string; expected: string; actual: string; description: string }[];
+  } | null>(null);
   const [shownHint, setShownHint] = useState(0);
   const [showHints, setShowHints] = useState(false);
   const [loadingAiHint, setLoadingAiHint] = useState(false);
-  const [aiHint, setAiHint] = useState(null);
+  const [aiHint, setAiHint] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -194,12 +199,21 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
           <div className="flex items-center gap-3 px-4 py-2 border-b border-white/5 bg-[#0d0d14]">
             <span className="text-xs text-slate-500 font-mono">main.py</span>
           </div>
-          <textarea
+          <Editor
+            height="400px"
+            language={exercise.language}
+            theme="vs-dark"
             value={code}
-            onChange={e => setCode(e.target.value)}
-            spellCheck={false}
-            className="flex-1 bg-[#0d0d14] text-slate-200 font-mono text-sm p-5 resize-none focus:outline-none leading-relaxed"
-            style={{ tabSize: 4 }}
+            onChange={(value) => setCode(value || "")}
+            options={{
+              minimap: { enabled: false },
+              fontSize: 14,
+              lineNumbers: "on",
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+              tabSize: 4,
+              wordWrap: "on",
+            }}
           />
 
           {/* Results */}

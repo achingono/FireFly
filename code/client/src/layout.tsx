@@ -7,6 +7,8 @@ import {
   Menu, X, LogOut, Star, Flame
 } from "lucide-react";
 
+interface LayoutProps { children: React.ReactNode; currentPageName: string; }
+
 const NAV = [
   { label: "Home", page: "Home", icon: Home, public: true },
   { label: "Curriculum", page: "Curriculum", icon: BookOpen, public: true },
@@ -17,12 +19,12 @@ const NAV = [
 
 const HIDDEN_NAV_PAGES = ["Auth", "Visualizer"];
 
-export default function Layout({ children, currentPageName }) {
-  const [user, setUser] = useState(null);
+export default function Layout({ children, currentPageName }: LayoutProps) {
+  const [user, setUser] = useState<Record<string, unknown> | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    client.auth.me().then(setUser).catch(() => {});
+    client.auth.me().then(u => setUser(u)).catch(() => {});
   }, []);
 
   const hideNav = HIDDEN_NAV_PAGES.includes(currentPageName);
@@ -73,15 +75,15 @@ export default function Layout({ children, currentPageName }) {
             {user ? (
               <div className="flex items-center gap-3">
                 <div className="hidden sm:flex items-center gap-2 text-xs">
-                  <span className="flex items-center gap-1 text-amber-400"><Star className="w-3 h-3" />{(user.xp ?? 0).toLocaleString()}</span>
-                  <span className="flex items-center gap-1 text-rose-400"><Flame className="w-3 h-3" />{user.streak ?? 0}</span>
+                  <span className="flex items-center gap-1 text-amber-400"><Star className="w-3 h-3" />{((user?.xp as number) ?? 0).toLocaleString()}</span>
+                  <span className="flex items-center gap-1 text-rose-400"><Flame className="w-3 h-3" />{(user?.streak as number) ?? 0}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center text-xs font-bold">
-                    {user.full_name?.[0] ?? "U"}
+                    {(user?.full_name as string)?.[0] ?? "U"}
                   </div>
                   <button
-                    onClick={() => client.auth.logout(createPageUrl("Home"))}
+                    onClick={() => client.auth.logout()}
                     className="p-1.5 text-slate-500 hover:text-white transition-colors"
                   >
                     <LogOut className="w-4 h-4" />

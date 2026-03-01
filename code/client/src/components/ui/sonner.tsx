@@ -1,5 +1,5 @@
 "use client";
-import { useTheme } from "next-themes"
+const useTheme = () => ({ theme: "dark" as const });
 import { Toaster as Sonner } from "sonner"
 
 const Toaster = ({

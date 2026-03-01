@@ -10,18 +10,25 @@
     "lint": "eslint src/ --ext .ts"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^11.0.0",
+    "@prisma/adapter-pg": "^7.4.2",
+    "@prisma/client": "^7.4.2",
+    "dotenv": "^16.4.7",
     "fastify": "^5.2.1",
     "fastify-plugin": "^5.0.1",
-    "@fastify/cors": "^11.0.0",
-    "@fastify/cookie": "^11.0.2",
-    "zod": "^3.24.2",
+    "ioredis": "^5.10.0",
+    "pg": "^8.19.0",
+    "prisma": "^7.4.2",
     "uuid": "^11.1.0",
-    "dotenv": "^16.4.7"
+    "zod": "^3.24.2"
   },
   "devDependencies": {
-    "typescript": "^5.8.2",
-    "tsx": "^4.19.3",
+    "@types/ioredis": "^4.28.10",
     "@types/node": "^22.13.5",
-    "@types/uuid": "^10.0.0"
+    "@types/pg": "^8.18.0",
+    "@types/uuid": "^10.0.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
   }
 }

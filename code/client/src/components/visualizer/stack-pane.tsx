@@ -1,6 +1,9 @@
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function StackPane({ frames }) {
+interface StackFrame { frameId: string; name: string; locals?: Record<string, unknown>; }
+interface StackPaneProps { frames: StackFrame[]; }
+
+export default function StackPane({ frames }: StackPaneProps) {
   return (
     <div className="flex flex-col overflow-hidden bg-[#0d0d14]">
       <div className="flex items-center gap-2 px-4 py-2 border-b border-white/5">
@@ -51,7 +54,7 @@ export default function StackPane({ frames }) {
   );
 }
 
-function formatVal(v) {
+function formatVal(v: unknown) {
   if (Array.isArray(v)) return `[${v.join(", ")}]`;
   if (v === null) return "None";
   if (v === undefined) return "—";

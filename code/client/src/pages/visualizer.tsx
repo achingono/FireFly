@@ -47,7 +47,7 @@ export default function Visualizer() {
   const [isRunning, setIsRunning] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showAi, setShowAi] = useState(false);
-  const [aiExplanation, setAiExplanation] = useState(null);
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
   const [ageProfile, setAgeProfile] = useState("10-13");
 
@@ -98,7 +98,7 @@ Tone: friendly, encouraging, ${ageProfile === "6-9" ? "very simple with emojis" 
           {/* Language */}
           <select
             value={language}
-            onChange={e => { setLanguage(e.target.value); setCode(STARTER_PROGRAMS[e.target.value]); setTrace(MOCK_TRACE); setCurrentStep(0); }}
+            onChange={e => { setLanguage(e.target.value); setCode(STARTER_PROGRAMS[e.target.value as keyof typeof STARTER_PROGRAMS]); setTrace(MOCK_TRACE); setCurrentStep(0); }}
             className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-sm text-slate-300 focus:outline-none"
           >
             <option value="python">Python</option>

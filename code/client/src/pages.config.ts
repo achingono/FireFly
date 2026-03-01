@@ -54,7 +54,7 @@ import Curriculum from './pages/curriculum';
 import Exercise from './pages/exercise';
 import Dashboard from './pages/dashboard';
 import TeacherDashboard from './pages/teacher';
-import __Layout from './layout.jsx';
+import __Layout from './layout';
 
 
 export const PAGES = {

@@ -1,5 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 
+interface HeapObject { id: string; type: string; repr?: string; items?: unknown[]; entries?: Record<string, unknown>; }
+interface HeapPaneProps { objects: HeapObject[]; }
+
 const TYPE_COLORS = {
   list: { border: "border-teal-500/30", bg: "bg-teal-500/8", label: "text-teal-300" },
   dict: { border: "border-sky-500/30", bg: "bg-sky-500/8", label: "text-sky-300" },
@@ -8,7 +11,7 @@ const TYPE_COLORS = {
   default: { border: "border-white/10", bg: "bg-white/3", label: "text-slate-400" },
 };
 
-export default function HeapPane({ objects }) {
+export default function HeapPane({ objects }: HeapPaneProps) {
   return (
     <div className="flex flex-col overflow-hidden bg-[#0d0d14]">
       <div className="flex items-center gap-2 px-4 py-2 border-b border-white/5">
@@ -21,7 +24,7 @@ export default function HeapPane({ objects }) {
             <div className="text-center text-slate-700 text-xs mt-8">No heap objects</div>
           ) : (
             objects.map((obj) => {
-              const colors = TYPE_COLORS[obj.type] ?? TYPE_COLORS.default;
+              const colors = TYPE_COLORS[obj.type as keyof typeof TYPE_COLORS] ?? TYPE_COLORS.default;
               return (
                 <motion.div
                   key={obj.id}
@@ -34,17 +37,17 @@ export default function HeapPane({ objects }) {
                     <span className={`text-[10px] font-mono font-semibold ${colors.label}`}>
                       {obj.type} <span className="opacity-50">#{obj.id}</span>
                     </span>
-                    <span className="text-[10px] text-slate-600 font-mono">{obj.repr?.length > 20 ? obj.repr.slice(0, 20) + "…" : obj.repr}</span>
+                    <span className="text-[10px] text-slate-600 font-mono">{(obj.repr?.length ?? 0) > 20 ? obj.repr!.slice(0, 20) + "…" : obj.repr}</span>
                   </div>
                   {obj.type === "list" && Array.isArray(obj.items) && (
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {obj.items.map((item, i) => (
+                      {obj.items.map((item: unknown, i: number) => (
                         <motion.div
                           key={i}
                           layout
                           className="min-w-[24px] h-6 px-1.5 rounded-md bg-white/8 border border-white/10 flex items-center justify-center text-[11px] font-mono text-slate-200"
                         >
-                          {item}
+                          {String(item)}
                         </motion.div>
                       ))}
                     </div>

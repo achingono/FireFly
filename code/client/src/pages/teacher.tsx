@@ -28,9 +28,9 @@ const STATUS_CONFIG = {
 
 export default function TeacherDashboard() {
   const [students] = useState(MOCK_STUDENTS);
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const [loadingInsight, setLoadingInsight] = useState(false);
-  const [insight, setInsight] = useState(null);
+  const [insight, setInsight] = useState<string | null>(null);
   const [tab, setTab] = useState("overview");
 
   const getClassInsight = async () => {
@@ -178,7 +178,7 @@ Provide a brief, actionable 2-3 sentence teaching insight for the teacher. Focus
               </thead>
               <tbody className="divide-y divide-white/5">
                 {students.map(s => {
-                  const sc = STATUS_CONFIG[s.status];
+                  const sc = STATUS_CONFIG[s.status as keyof typeof STATUS_CONFIG];
                   return (
                     <tr key={s.id} className="hover:bg-white/3 transition-colors">
                       <td className="px-5 py-4">

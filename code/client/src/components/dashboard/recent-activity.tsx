@@ -21,7 +21,7 @@ export default function RecentActivity() {
       <h2 className="font-bold text-lg mb-4">Recent Activity</h2>
       <div className="space-y-2">
         {MOCK_ACTIVITY.map((act, i) => {
-          const cfg = ICONS[act.type];
+          const cfg = ICONS[act.type as keyof typeof ICONS];
           return (
             <div key={i} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/3 transition-colors">
               <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${cfg.bg}`}>

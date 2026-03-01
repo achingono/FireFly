@@ -1,0 +1,193 @@
+// FireFly — Prisma schema (SPEC §13)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum Role {
+  student
+  teacher
+  parent
+  admin
+}
+
+enum AgeProfile {
+  fun       // 8-10
+  balanced  // 11-13
+  pro       // 14+
+}
+
+enum Difficulty {
+  beginner
+  intermediate
+  advanced
+}
+
+enum ExecStatus {
+  queued
+  running
+  completed
+  failed
+  timeout
+}
+
+// ───────────────────────────── User ─────────────────────────────
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  displayName   String?
+  oidcSub       String?   @unique   // Subject claim from OIDC provider
+  role          Role      @default(student)
+  age           Int?
+  ageProfile    AgeProfile @default(balanced)
+  preferences   Json      @default("{}")  // { theme, sound, animations }
+  onboarded     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessions       LearningSession[]
+  masteryRecords MasteryRecord[]
+  executionJobs  ExecutionJob[]
+
+  @@map("users")
+}
+
+// ───────────────────────────── Curriculum ────────────────────────
+
+model Concept {
+  id            String      @id @default(uuid())
+  name          String      @unique
+  description   String?
+  tags          String[]    @default([])
+  prerequisites String[]    @default([])  // concept IDs
+  difficulty    Difficulty  @default(beginner)
+  sortOrder     Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  lessons         Lesson[]
+  masteryRecords  MasteryRecord[]
+
+  @@map("concepts")
+}
+
+model Lesson {
+  id            String    @id @default(uuid())
+  conceptId     String
+  concept       Concept   @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  title         String
+  content       String    // markdown
+  examples      Json      @default("[]")
+  media         Json      @default("[]")
+  llmPromptTemplates Json @default("[]")
+  sortOrder     Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  exercises Lesson_Exercise[]
+
+  @@map("lessons")
+}
+
+model Exercise {
+  id            String      @id @default(uuid())
+  title         String
+  description   String?
+  conceptTags   String[]    @default([])
+  starterCode   String      @default("")
+  testCases     Json        @default("[]")
+  expectedTracePatterns Json @default("[]")
+  rubric        Json        @default("{}")
+  difficulty    Difficulty  @default(beginner)
+  language      String      @default("python")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  lessons           Lesson_Exercise[]
+  learningSession   LearningSession[]
+  executionJobs     ExecutionJob[]
+
+  @@map("exercises")
+}
+
+// Join table for many-to-many Lesson <-> Exercise
+model Lesson_Exercise {
+  lessonId    String
+  exerciseId  String
+  lesson      Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  exercise    Exercise  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  sortOrder   Int       @default(0)
+
+  @@id([lessonId, exerciseId])
+  @@map("lesson_exercises")
+}
+
+// ───────────────────────────── Execution ─────────────────────────
+
+model ExecutionJob {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseId    String?
+  exercise      Exercise?   @relation(fields: [exerciseId], references: [id], onDelete: SetNull)
+  language      String      @default("python")
+  sourceCode    String
+  stdin         String?
+  status        ExecStatus  @default(queued)
+  judge0Token   String?
+  stdout        String?
+  stderr        String?
+  exitCode      Int?
+  trace         Json?       // Canonical trace (SPEC §12)
+  durationMs    Int?
+  memoryKb      Int?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([judge0Token])
+  @@map("execution_jobs")
+}
+
+// ───────────────────────────── Learning & Progress ───────────────
+
+model LearningSession {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseId    String
+  exercise      Exercise  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  attempts      Json      @default("[]")   // [{code, submittedAt, passed, traceId}]
+  hintsUsed     Int       @default(0)
+  llmInteractions Json    @default("[]")
+  masteryDelta  Float?
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+
+  @@index([userId])
+  @@index([exerciseId])
+  @@map("learning_sessions")
+}
+
+model MasteryRecord {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conceptId     String
+  concept       Concept   @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  score         Float     @default(0)       // 0.0 – 1.0 (BKT p(L))
+  attempts      Int       @default(0)
+  lastAttemptAt DateTime?
+  history       Json      @default("[]")   // [{date, score, delta}]
+
+  @@unique([userId, conceptId])
+  @@index([userId])
+  @@map("mastery_records")
+}

@@ -18,7 +18,7 @@ const MOCK_PROGRESS = [
 ];
 
 export default function Dashboard() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<Record<string, unknown> | null>(null);
   const [progress, setProgress] = useState(MOCK_PROGRESS);
   const [loading, setLoading] = useState(true);
 
@@ -26,16 +26,16 @@ export default function Dashboard() {
     const load = async () => {
       const u = await client.auth.me().catch(() => null);
       setUser(u);
-      const prog = await client.entities.Progress.list("-updated_date", 10).catch(() => []);
-      if (prog.length > 0) setProgress(prog);
+      const prog = await client.entities.Progress.list("-updated_date", 10).catch(() => [] as unknown[]);
+      if (prog.length > 0) setProgress(prog as typeof MOCK_PROGRESS);
       setLoading(false);
     };
     load();
   }, []);
 
-  const xp = user?.xp ?? 1240;
-  const level = user?.level ?? 5;
-  const streak = user?.streak ?? 7;
+  const xp = (user?.xp as number) ?? 1240;
+  const level = (user?.level as number) ?? 5;
+  const streak = (user?.streak as number) ?? 7;
   const masteredCount = progress.filter(p => p.status === "mastered").length;
   const overallProgress = Math.round(progress.reduce((s, p) => s + (p.masteryScore ?? 0), 0) / (progress.length * 100) * 100);
 
@@ -46,7 +46,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-black">
-              Welcome back{user?.full_name ? `, ${user.full_name.split(" ")[0]}` : ""}! 👋
+              Welcome back{user?.full_name ? `, ${(user.full_name as string).split(" ")[0]}` : ""}! 👋
             </h1>
             <p className="text-slate-500 mt-1">Keep up your streak — you're on a roll.</p>
           </div>

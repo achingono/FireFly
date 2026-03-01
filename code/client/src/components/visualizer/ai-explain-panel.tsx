@@ -1,9 +1,14 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Sparkles, Loader2 } from "lucide-react";
 
+interface AiExplainPanelProps {
+  show: boolean; onClose: () => void; explanation: string | null;
+  loading: boolean; ageProfile: string; frame: { line: number; event: string } | null;
+}
+
 const AGE_LABELS = { "6-9": "Explorer Mode 🚀", "10-13": "Builder Mode 🏗️", "14-17": "Hacker Mode ⚡" };
 
-export default function AiExplainPanel({ show, onClose, explanation, loading, ageProfile, frame }) {
+export default function AiExplainPanel({ show, onClose, explanation, loading, ageProfile, frame }: AiExplainPanelProps) {
   return (
     <AnimatePresence>
       {show && (
@@ -22,7 +27,7 @@ export default function AiExplainPanel({ show, onClose, explanation, loading, ag
                 </div>
                 <span className="font-semibold text-sm">AI Tutor</span>
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/25">
-                  {AGE_LABELS[ageProfile] ?? ageProfile}
+                  {AGE_LABELS[ageProfile as keyof typeof AGE_LABELS] ?? ageProfile}
                 </span>
                 {frame && (
                   <span className="text-[11px] text-slate-600 font-mono">· line {frame.line} · {frame.event}</span>

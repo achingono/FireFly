@@ -1,6 +1,8 @@
 import { Terminal, AlertCircle } from "lucide-react";
 
-export default function OutputPane({ stdout, stderr, step, total }) {
+interface OutputPaneProps { stdout: string; stderr: string; step: number; total: number; }
+
+export default function OutputPane({ stdout, stderr, step, total }: OutputPaneProps) {
   const lines = stdout ? stdout.split("\n").filter(Boolean) : [];
   const errLines = stderr ? stderr.split("\n").filter(Boolean) : [];
 
@@ -16,10 +18,10 @@ export default function OutputPane({ stdout, stderr, step, total }) {
           <span className="text-slate-700">No output yet…</span>
         ) : (
           <>
-            {lines.map((line, i) => (
+            {lines.map((line: string, i: number) => (
               <div key={i} className="text-green-400/90 leading-5">{line}</div>
             ))}
-            {errLines.map((line, i) => (
+            {errLines.map((line: string, i: number) => (
               <div key={i} className="flex items-start gap-1.5 text-rose-400 leading-5">
                 <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
                 {line}

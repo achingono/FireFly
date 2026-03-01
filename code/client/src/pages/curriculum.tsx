@@ -28,7 +28,7 @@ export default function Curriculum() {
     const load = async () => {
       setLoading(true);
       const data = await client.entities.Concept.list();
-      if (data.length > 0) setConcepts(data);
+      if (data.length > 0) setConcepts(data as typeof MOCK_CONCEPTS);
       setLoading(false);
     };
     load();
@@ -107,7 +107,7 @@ export default function Curriculum() {
                   <h3 className="font-semibold text-base mb-1.5">{concept.title}</h3>
                   <p className="text-slate-500 text-xs leading-relaxed flex-1 mb-4">{concept.description}</p>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium bg-${DIFF_COLORS[concept.difficulty]}-500/15 text-${DIFF_COLORS[concept.difficulty]}-400`}>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium bg-${DIFF_COLORS[concept.difficulty as keyof typeof DIFF_COLORS]}-500/15 text-${DIFF_COLORS[concept.difficulty as keyof typeof DIFF_COLORS]}-400`}>
                       {concept.difficulty}
                     </span>
                     {concept.estimatedMinutes && (

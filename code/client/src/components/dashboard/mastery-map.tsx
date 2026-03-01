@@ -1,19 +1,22 @@
 import { motion } from "framer-motion";
 import { CheckCircle2, Circle, Clock } from "lucide-react";
 
+interface ProgressItem { conceptId: string; concept: string; masteryScore: number; status: string; }
+interface MasteryMapProps { progress: ProgressItem[]; }
+
 const STATUS_CONFIG = {
   mastered: { color: "from-emerald-500 to-teal-500", text: "text-emerald-300", icon: CheckCircle2, border: "border-emerald-500/40" },
   in_progress: { color: "from-violet-500 to-fuchsia-600", text: "text-violet-300", icon: Clock, border: "border-violet-500/40" },
   not_started: { color: "from-slate-700 to-slate-800", text: "text-slate-600", icon: Circle, border: "border-white/8" },
 };
 
-export default function MasteryMap({ progress }) {
+export default function MasteryMap({ progress }: MasteryMapProps) {
   return (
     <div className="rounded-2xl border border-white/8 bg-white/3 p-6">
       <h2 className="font-bold text-lg mb-5">Mastery Map</h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {progress.map((p, i) => {
-          const sc = STATUS_CONFIG[p.status] ?? STATUS_CONFIG.not_started;
+        {progress.map((p: ProgressItem, i: number) => {
+          const sc = STATUS_CONFIG[p.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.not_started;
           const Icon = sc.icon;
           return (
             <motion.div

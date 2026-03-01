@@ -21,23 +21,23 @@ export default function Auth() {
   const [mode, setMode] = useState("login"); // login | register
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
     email: "", password: "", role: "student", ageGroup: "10-13", fullName: ""
   });
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
       if (mode === "register") {
-        client.auth.redirectToLogin(createPageUrl("Dashboard"));
+        client.auth.redirectToLogin();
       } else {
-        client.auth.redirectToLogin(createPageUrl("Dashboard"));
+        client.auth.redirectToLogin();
       }
     } catch (err) {
-      setError(err.message || "Something went wrong");
+      setError((err as Error).message || "Something went wrong");
     } finally {
       setLoading(false);
     }
