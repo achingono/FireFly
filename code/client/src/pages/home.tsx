@@ -18,7 +18,7 @@ const AGE_THEMES = [
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground overflow-hidden">
       {/* Hero */}
       <section className="relative pt-20 pb-32 px-6 text-center">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(120,80,255,0.3),transparent)]" />
@@ -65,8 +65,8 @@ export default function Home() {
           transition={{ duration: 0.9, delay: 0.3 }}
           className="relative max-w-5xl mx-auto mt-20"
         >
-          <div className="rounded-2xl border border-white/10 bg-[#111118] shadow-2xl shadow-violet-900/20 overflow-hidden">
-            <div className="flex items-center gap-2 px-5 py-3.5 border-b border-white/5 bg-[#0d0d14]">
+            <div className="rounded-2xl border border-border bg-card shadow-2xl shadow-violet-900/20 overflow-hidden">
+            <div className="flex items-center gap-2 px-5 py-3.5 border-b border-border/50 bg-muted">
               <div className="w-3 h-3 rounded-full bg-red-500/70" />
               <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
               <div className="w-3 h-3 rounded-full bg-green-500/70" />

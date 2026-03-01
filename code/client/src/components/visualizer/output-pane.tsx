@@ -7,8 +7,8 @@ export default function OutputPane({ stdout, stderr, step, total }: OutputPanePr
   const errLines = stderr ? stderr.split("\n").filter(Boolean) : [];
 
   return (
-    <div className="flex flex-col overflow-hidden bg-[#0d0d14]">
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-white/5">
+    <div className="flex flex-col overflow-hidden bg-muted">
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50">
         <Terminal className="w-3 h-3 text-slate-500" />
         <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Output</span>
         <span className="ml-auto text-[10px] text-slate-600">Step {step + 1}/{total}</span>
@@ -32,7 +32,7 @@ export default function OutputPane({ stdout, stderr, step, total }: OutputPanePr
       </div>
       {/* Step event badge */}
       <div className="px-3 pb-3">
-        <div className="rounded-lg bg-white/3 border border-white/8 px-3 py-2 text-[11px] text-slate-500 font-mono">
+        <div className="rounded-lg bg-muted/50 border border-border px-3 py-2 text-[11px] text-muted-foreground font-mono">
           step <span className="text-violet-400">{step + 1}</span> of <span className="text-slate-400">{total}</span>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { ChevronLeft, Play, Lightbulb, CheckCircle2, XCircle, Loader2, Eye, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "@/lib/ThemeContext";
 
 interface Exercise {
   id: string;
@@ -86,10 +87,10 @@ function ExerciseList({ conceptId }: { conceptId: string | null }) {
   const DIFF_COLORS = { beginner: "emerald", intermediate: "amber", advanced: "rose" };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white px-4 py-8">
+    <div className="min-h-screen bg-background text-foreground px-4 py-8">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
-          <Link to={createPageUrl("Curriculum")} className="text-slate-500 hover:text-white transition-colors">
+          <Link to={createPageUrl("Curriculum")} className="text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
@@ -133,7 +134,7 @@ function ExerciseList({ conceptId }: { conceptId: string | null }) {
                   transition={{ delay: i * 0.05 }}
                 >
                   <Link to={createPageUrl(`Exercise?id=${ex.id}`)}>
-                    <div className="group rounded-2xl border border-white/8 bg-white/3 p-5 hover:bg-white/6 hover:border-white/15 transition-all cursor-pointer">
+                    <div className="group rounded-2xl border border-border bg-muted/30 p-5 hover:bg-muted/60 hover:border-border/80 transition-all cursor-pointer">
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="font-semibold text-base">{ex.title}</h3>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium bg-${diffColor}-500/15 text-${diffColor}-400`}>
@@ -168,6 +169,7 @@ function ExerciseList({ conceptId }: { conceptId: string | null }) {
 // ─── Single Exercise ────────────────────────────────────────────
 
 function SingleExercise({ exerciseId }: { exerciseId: string }) {
+  const { isPro } = useTheme();
   const [exercise, setExercise] = useState<Exercise | null>(null);
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(true);
@@ -263,7 +265,7 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
       </div>
     );
@@ -271,7 +273,7 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
 
   if (!exercise) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <div className="text-center">
           <p className="text-slate-500 mb-4">Exercise not found.</p>
           <Link to={createPageUrl("Curriculum")} className="text-violet-400 hover:text-violet-300">
@@ -283,10 +285,10 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
-      <div className="flex items-center gap-4 px-5 py-4 border-b border-white/8 bg-[#0d0d14]">
-        <Link to={createPageUrl("Curriculum")} className="text-slate-500 hover:text-white">
+      <div className="flex items-center gap-4 px-5 py-4 border-b border-border bg-muted">
+        <Link to={createPageUrl("Curriculum")} className="text-muted-foreground hover:text-foreground">
           <ChevronLeft className="w-5 h-5" />
         </Link>
         <div>
@@ -299,7 +301,7 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
         </div>
         <div className="ml-auto flex items-center gap-2">
           <Link to={createPageUrl(`Visualizer?exerciseId=${exercise.id}`)}>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-sm text-slate-300 hover:bg-white/10 transition-colors">
+            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-muted text-sm text-muted-foreground hover:bg-accent transition-colors">
               <Eye className="w-3.5 h-3.5" />
               Visualize
             </button>
@@ -310,14 +312,14 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
             className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-sm font-semibold disabled:opacity-50 transition-colors"
           >
             {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-            Run
+            {isPro ? "Execute" : "Run"}
           </button>
         </div>
       </div>
 
       <div className="flex flex-col lg:flex-row h-[calc(100vh-65px)]">
         {/* Left — prompt + results */}
-        <div className="lg:w-96 border-r border-white/8 overflow-y-auto p-5 space-y-5">
+        <div className="lg:w-96 border-r border-border overflow-y-auto p-5 space-y-5">
           <div>
             <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Challenge</h2>
             <p className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
@@ -331,7 +333,7 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
               <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Test Cases</h2>
               <div className="space-y-2">
                 {testCases.map((tc, i) => (
-                  <div key={i} className="rounded-xl border border-white/8 bg-white/3 p-3 text-xs font-mono">
+                  <div key={i} className="rounded-xl border border-border bg-muted/30 p-3 text-xs font-mono">
                     <div className="text-slate-400 mb-1">{tc.description}</div>
                     <div>In: <span className="text-sky-400">{tc.input}</span></div>
                     <div>Out: <span className="text-emerald-400">{tc.expectedOutput}</span></div>
@@ -401,7 +403,7 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
 
         {/* Right — code editor */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex items-center gap-3 px-4 py-2 border-b border-white/5 bg-[#0d0d14]">
+          <div className="flex items-center gap-3 px-4 py-2 border-b border-border/50 bg-muted">
             <span className="text-xs text-slate-500 font-mono">
               main.{exercise.language === "python" ? "py" : exercise.language === "javascript" ? "js" : exercise.language}
             </span>
@@ -409,7 +411,7 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
           <Editor
             height="400px"
             language={exercise.language}
-            theme="vs-dark"
+            theme={isPro ? "vs-dark" : "light"}
             value={code}
             onChange={(value) => setCode(value || "")}
             options={{
@@ -430,12 +432,14 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                className="border-t border-white/8 bg-[#0d0d14] overflow-hidden"
+                className="border-t border-border bg-muted overflow-hidden"
               >
                 <div className="p-4">
                   <div className={`flex items-center gap-2 mb-3 font-semibold ${results.status === "passed" ? "text-emerald-400" : "text-rose-400"}`}>
                     {results.status === "passed" ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
-                    {results.status === "passed" ? "Code executed successfully! 🎉" : "Execution failed — check the output below."}
+                    {results.status === "passed"
+                      ? (isPro ? "Execution complete \u2014 0 errors." : "Code executed successfully! \ud83c\udf89")
+                      : (isPro ? "Execution failed \u2014 see output." : "Execution failed \u2014 check the output below.")}
                   </div>
                   {results.stdout && (
                     <div className="mt-2">

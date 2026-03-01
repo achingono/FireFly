@@ -3,6 +3,7 @@ import {
   SkipBack, ChevronLeft, ChevronRight, SkipForward,
   Play, Pause, Sparkles
 } from "lucide-react";
+import { useTheme } from "@/lib/ThemeContext";
 
 interface StepperControlsProps {
   currentStep: number;
@@ -26,6 +27,7 @@ const EVENT_COLORS = {
 export default function StepperControls({
   currentStep, totalFrames, onStep, isPlaying, setIsPlaying, onExplain, currentFrame
 }: StepperControlsProps) {
+  const { isFun, isPro } = useTheme();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -50,7 +52,7 @@ export default function StepperControls({
   const eventClass = EVENT_COLORS[event as keyof typeof EVENT_COLORS] ?? EVENT_COLORS.line;
 
   return (
-    <div className="border-t border-white/8 bg-[#0d0d14] px-5 py-3">
+    <div className="border-t border-border bg-muted px-5 py-3">
       {/* Progress bar */}
       <div
         className="w-full h-1 rounded-full bg-white/8 mb-3 cursor-pointer relative group"
@@ -121,7 +123,7 @@ export default function StepperControls({
           className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/15 border border-violet-500/25 text-violet-300 text-xs font-semibold hover:bg-violet-500/25 transition-colors"
         >
           <Sparkles className="w-3.5 h-3.5" />
-          Explain this step
+          {isFun ? "What's happening?" : isPro ? "Explain" : "Explain this step"}
         </button>
       </div>
     </div>

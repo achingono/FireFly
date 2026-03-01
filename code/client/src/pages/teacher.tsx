@@ -52,7 +52,7 @@ Provide a brief, actionable 2-3 sentence teaching insight for the teacher. Focus
   const classAvg = Math.round(students.reduce((s, st) => s + st.masteryScore, 0) / students.length);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white px-4 py-8">
+    <div className="min-h-screen bg-background text-foreground px-4 py-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">

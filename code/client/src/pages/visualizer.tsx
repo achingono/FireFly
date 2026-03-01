@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { client, execution } from "@/api/client";
 import { useAuth } from "@/lib/AuthContext";
+import { useTheme } from "@/lib/ThemeContext";
 import CodePane from "@/components/visualizer/code-pane";
 import StackPane from "@/components/visualizer/stack-pane";
 import HeapPane from "@/components/visualizer/heap-pane";
@@ -234,6 +235,7 @@ export default function Visualizer() {
   const exerciseIdParam = searchParams.get("exerciseId");
   const jobIdParam = searchParams.get("jobId");
   const { user } = useAuth();
+  const { isFun, isPro } = useTheme();
 
   const [code, setCode] = useState(STARTER_PROGRAMS.python);
   const [language, setLanguage] = useState("python");
@@ -406,7 +408,7 @@ Tone: friendly, encouraging, ${ageProfile === "8-10" ? "very simple with emojis"
 
   if (initialLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 text-violet-400 animate-spin mx-auto mb-3" />
           <p className="text-slate-500 text-sm">Loading…</p>
@@ -424,12 +426,12 @@ Tone: friendly, encouraging, ${ageProfile === "8-10" ? "very simple with emojis"
       : "— sandbox";
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* Top bar */}
-      <div className="flex items-center gap-4 px-4 py-3 border-b border-white/8 bg-[#0d0d14]">
+      <div className="flex items-center gap-4 px-4 py-3 border-b border-border bg-muted">
         <Link
           to={exerciseIdParam ? createPageUrl(`Exercise?id=${exerciseIdParam}`) : createPageUrl("Curriculum")}
-          className="text-slate-500 hover:text-white transition-colors"
+          className="text-muted-foreground hover:text-foreground transition-colors"
         >
           <ChevronLeft className="w-5 h-5" />
         </Link>
@@ -443,7 +445,7 @@ Tone: friendly, encouraging, ${ageProfile === "8-10" ? "very simple with emojis"
             <select
               value={language}
               onChange={(e) => handleLanguageChange(e.target.value)}
-              className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-sm text-slate-300 focus:outline-none"
+              className="px-3 py-1.5 rounded-lg bg-muted border border-border text-sm text-muted-foreground focus:outline-none"
             >
               <option value="python">Python</option>
               <option value="javascript">JavaScript</option>
@@ -451,7 +453,7 @@ Tone: friendly, encouraging, ${ageProfile === "8-10" ? "very simple with emojis"
           )}
           {/* Language badge for exercise/job mode */}
           {(exerciseIdParam || jobIdParam) && (
-            <span className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-sm text-slate-400">
+            <span className="px-3 py-1.5 rounded-lg bg-muted border border-border text-sm text-muted-foreground">
               {language}
             </span>
           )}
@@ -468,7 +470,7 @@ Tone: friendly, encouraging, ${ageProfile === "8-10" ? "very simple with emojis"
             ) : (
               <>
                 <Play className="w-3.5 h-3.5" />
-                Run
+                {isFun ? "Let's Go!" : isPro ? "Execute" : "Run"}
               </>
             )}
           </button>
@@ -490,7 +492,7 @@ Tone: friendly, encouraging, ${ageProfile === "8-10" ? "very simple with emojis"
 
       {/* Main 4-pane grid */}
       <div
-        className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_260px_260px_1fr] divide-x divide-white/5 overflow-hidden"
+        className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_260px_260px_1fr] divide-x divide-border/50 overflow-hidden"
         style={{ minHeight: 0 }}
       >
         <CodePane code={code} setCode={setCode} currentLine={currentFrame?.line} language={language} />

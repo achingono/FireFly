@@ -40,7 +40,7 @@ export default function Dashboard() {
   const overallProgress = Math.round(progress.reduce((s, p) => s + (p.masteryScore ?? 0), 0) / (progress.length * 100) * 100);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white px-4 py-8">
+    <div className="min-h-screen bg-background text-foreground px-4 py-8">
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Welcome */}
         <div className="flex items-center justify-between">

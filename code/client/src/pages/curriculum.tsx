@@ -71,7 +71,7 @@ export default function Curriculum() {
   });
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white px-4 py-8">
+    <div className="min-h-screen bg-background text-foreground px-4 py-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-10">

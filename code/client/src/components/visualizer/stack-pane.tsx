@@ -5,8 +5,8 @@ interface StackPaneProps { frames: StackFrame[]; }
 
 export default function StackPane({ frames }: StackPaneProps) {
   return (
-    <div className="flex flex-col overflow-hidden bg-[#0d0d14]">
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-white/5">
+    <div className="flex flex-col overflow-hidden bg-muted">
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50">
         <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Call Stack</span>
         <span className="ml-auto text-[10px] text-slate-700">{frames.length} frame{frames.length !== 1 ? "s" : ""}</span>
       </div>

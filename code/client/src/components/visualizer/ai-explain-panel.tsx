@@ -17,7 +17,7 @@ export default function AiExplainPanel({ show, onClose, explanation, loading, ag
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 80 }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="fixed bottom-0 left-0 right-0 z-50 bg-[#13131f] border-t border-violet-500/25 shadow-2xl"
+          className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-violet-500/25 shadow-2xl"
         >
           <div className="max-w-4xl mx-auto px-5 py-5">
             <div className="flex items-center justify-between mb-3">

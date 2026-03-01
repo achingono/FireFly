@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import Editor, { type OnMount } from "@monaco-editor/react";
+import { useTheme } from "@/lib/ThemeContext";
 
 interface CodePaneProps {
   code: string;
@@ -9,6 +10,7 @@ interface CodePaneProps {
 }
 
 export default function CodePane({ code, setCode, currentLine, language }: CodePaneProps) {
+  const { isPro } = useTheme();
   const editorRef = useRef<any>(null);
   const decorationsRef = useRef<any>([]);
 
@@ -42,8 +44,8 @@ export default function CodePane({ code, setCode, currentLine, language }: CodeP
   }, [currentLine]);
 
   return (
-    <div className="flex flex-col overflow-hidden bg-[#0d0d14] h-full">
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-white/5">
+    <div className="flex flex-col overflow-hidden bg-muted h-full">
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50">
         <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Code</span>
         <span className="text-[10px] text-slate-600 font-mono ml-auto">{language}</span>
       </div>
@@ -51,7 +53,7 @@ export default function CodePane({ code, setCode, currentLine, language }: CodeP
         <Editor
           height="100%"
           language={language}
-          theme="vs-dark"
+          theme={isPro ? "vs-dark" : "light"}
           value={code}
           onChange={(value) => setCode(value || "")}
           onMount={handleEditorMount}
