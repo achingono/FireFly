@@ -125,7 +125,7 @@ function heapId(varName: string, _repr: string): string {
  * - Generates cumulative stdout per frame
  * - Adds file and timeMs defaults
  */
-function transformTrace(backend: BackendTrace): UITrace {
+function transformTrace(backend: BackendTrace, language = "python"): UITrace {
   const frames: UIFrame[] = [];
 
   for (let i = 0; i < backend.frames.length; i++) {
@@ -173,7 +173,7 @@ function transformTrace(backend: BackendTrace): UITrace {
     frames.push({
       step: bf.step,
       timeMs: i * 5,
-      file: "main.py",
+      file: language === "javascript" ? "main.js" : "main.py",
       line: bf.line,
       event: bf.event,
       stack: uiStack,
@@ -293,7 +293,7 @@ export default function Visualizer() {
       } | null;
 
       if (data?.trace) {
-        const uiTrace = transformTrace(data.trace);
+        const uiTrace = transformTrace(data.trace, language);
         setTrace(uiTrace);
         setCurrentStep(0);
       }
@@ -334,11 +334,11 @@ export default function Visualizer() {
       } | null;
 
       if (result?.trace) {
-        const uiTrace = transformTrace(result.trace);
+        const uiTrace = transformTrace(result.trace, language);
         setTrace(uiTrace);
         setCurrentStep(0);
       } else if (result?.status === "completed" && !result.trace) {
-        // Non-Python or tracer didn't produce output — show mock as fallback
+        // Unsupported language or tracer didn't produce output — show mock as fallback
         setTrace(MOCK_TRACE as UITrace);
         setRunError("Trace not available for this language. Showing demo trace.");
       } else {
