@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import Editor from "@monaco-editor/react";
-import { client, execution, progress, ai, MasteryUpdateResponse } from "@/api/client";
+import { client, execution, progress, ai, MasteryUpdateResponse, MasteryConcept } from "@/api/client";
 import { Link, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { ChevronLeft, Play, Lightbulb, CheckCircle2, XCircle, Loader2, Eye, ArrowLeft } from "lucide-react";
+import { ChevronLeft, Play, Lightbulb, CheckCircle2, XCircle, Loader2, Eye, ArrowLeft, Lock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/lib/ThemeContext";
 import { useAuth } from "@/lib/AuthContext";
@@ -53,22 +53,67 @@ export default function ExercisePage() {
 // ─── Exercise List ──────────────────────────────────────────────
 
 function ExerciseList({ conceptId }: { conceptId: string | null }) {
+  const { user } = useAuth();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [conceptName, setConceptName] = useState<string | null>(null);
+  const [isLocked, setIsLocked] = useState(false);
+  const [unmetPrereqs, setUnmetPrereqs] = useState<string[]>([]);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       setError(null);
+      setIsLocked(false);
+      setUnmetPrereqs([]);
       try {
-        // If conceptId, fetch concept detail for name and load exercises
         if (conceptId) {
+          // Fetch concept detail for name and prerequisites
           const concept = await client.entities.concepts.get(conceptId) as Record<string, unknown> | null;
           if (concept) {
             setConceptName(concept.name as string);
           }
+
+          // Check if concept is locked (prerequisites not mastered)
+          if (user?.id && concept) {
+            const prereqs = (concept.prerequisites ?? []) as string[];
+            if (prereqs.length > 0) {
+              try {
+                const mastery = await progress.masteryMap(user.id);
+                if (mastery?.concepts) {
+                  const masteryById = new Map<string, MasteryConcept>();
+                  for (const c of mastery.concepts) {
+                    masteryById.set(c.conceptId, c);
+                  }
+
+                  const allPrereqsMet = prereqs.every((prereqId) => {
+                    const m = masteryById.get(prereqId);
+                    return m && m.mastered;
+                  });
+
+                  if (!allPrereqsMet) {
+                    // Find unmet prerequisite names
+                    const allConcepts = await client.entities.concepts.list() as Array<{ id: string; name: string }>;
+                    const conceptsById = new Map(allConcepts.map((c) => [c.id, c]));
+                    const names = prereqs
+                      .filter((prereqId) => {
+                        const m = masteryById.get(prereqId);
+                        return !m || !m.mastered;
+                      })
+                      .map((prereqId) => conceptsById.get(prereqId)?.name ?? "Unknown");
+                    setIsLocked(true);
+                    setUnmetPrereqs(names);
+                    setLoading(false);
+                    return;
+                  }
+                }
+              } catch {
+                // Mastery data unavailable — allow access (graceful degradation)
+              }
+            }
+          }
+
           const data = await client.entities.exercises.list({ conceptId }) as Exercise[];
           setExercises(data);
         } else {
@@ -83,7 +128,7 @@ function ExerciseList({ conceptId }: { conceptId: string | null }) {
       }
     };
     load();
-  }, [conceptId]);
+  }, [conceptId, user?.id]);
 
   const DIFF_COLORS = { beginner: "emerald", intermediate: "amber", advanced: "rose" };
 
@@ -98,9 +143,11 @@ function ExerciseList({ conceptId }: { conceptId: string | null }) {
             <h1 className="text-3xl font-black">
               {conceptName ? `${conceptName} — Exercises` : "All Exercises"}
             </h1>
-            <p className="text-slate-500 text-sm mt-1">
-              {exercises.length} exercise{exercises.length !== 1 ? "s" : ""} available
-            </p>
+            {!isLocked && (
+              <p className="text-slate-500 text-sm mt-1">
+                {exercises.length} exercise{exercises.length !== 1 ? "s" : ""} available
+              </p>
+            )}
           </div>
         </div>
 
@@ -117,13 +164,47 @@ function ExerciseList({ conceptId }: { conceptId: string | null }) {
           </div>
         )}
 
-        {!loading && !error && exercises.length === 0 && (
+        {/* Locked concept state */}
+        {!loading && !error && isLocked && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center py-24"
+          >
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-amber-500/10 border border-amber-500/20 mb-6">
+              <Lock className="w-10 h-10 text-amber-400" />
+            </div>
+            <h2 className="text-xl font-bold mb-3">Concept Locked</h2>
+            <p className="text-slate-500 text-sm max-w-md mx-auto mb-6">
+              You need to master prerequisite concepts before you can access these exercises.
+            </p>
+            {unmetPrereqs.length > 0 && (
+              <div className="flex items-center justify-center gap-2 flex-wrap mb-6">
+                <span className="text-sm text-amber-400">Master:</span>
+                {unmetPrereqs.map((name) => (
+                  <span key={name} className="px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs font-medium text-amber-400">
+                    {name}
+                  </span>
+                ))}
+              </div>
+            )}
+            <Link
+              to={createPageUrl("Curriculum")}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-sm font-semibold transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Curriculum
+            </Link>
+          </motion.div>
+        )}
+
+        {!loading && !error && !isLocked && exercises.length === 0 && (
           <div className="text-center py-24 text-slate-500">
             <p>No exercises found. {conceptId ? "This concept has no exercises yet." : "Seed the database to get started."}</p>
           </div>
         )}
 
-        {!loading && !error && (
+        {!loading && !error && !isLocked && (
           <div className="grid gap-4">
             {exercises.map((ex, i) => {
               const diffColor = DIFF_COLORS[ex.difficulty as keyof typeof DIFF_COLORS] ?? "slate";

@@ -43,12 +43,23 @@ export default function Dashboard() {
   );
 
   // Transform concepts into format MasteryMap component expects
-  const progressItems = concepts.map((c) => ({
-    conceptId: c.conceptId,
-    concept: c.conceptName,
-    masteryScore: Math.round(c.score * 100),
-    status: c.mastered ? "mastered" : c.attempts > 0 ? "in_progress" : "not_started",
-  }));
+  // Also compute locked state: a concept is locked if any prerequisite is not mastered
+  const masteryById = new Map(concepts.map((c) => [c.conceptId, c]));
+  const progressItems = concepts.map((c) => {
+    const locked =
+      c.prerequisites.length > 0 &&
+      !c.prerequisites.every((prereqId) => {
+        const prereq = masteryById.get(prereqId);
+        return prereq && prereq.mastered;
+      });
+    return {
+      conceptId: c.conceptId,
+      concept: c.conceptName,
+      masteryScore: Math.round(c.score * 100),
+      status: c.mastered ? "mastered" : c.attempts > 0 ? "in_progress" : "not_started",
+      locked,
+    };
+  });
 
   if (loading) {
     return (
