@@ -32,7 +32,7 @@ services:
       - firefly
 
   judge0:
-    image: judge0/judge0-ce:1.13.1
+    image: judge0/judge0:1.13.1
     container_name: firefly-judge0
     environment:
       POSTGRES_HOST: postgres
@@ -52,7 +52,7 @@ services:
       - firefly
 
   judge0-workers:
-    image: judge0/judge0-ce:1.13.1
+    image: judge0/judge0:1.13.1
     container_name: firefly-judge0-workers
     command: ./scripts/workers
     environment:
@@ -68,7 +68,7 @@ services:
       - firefly
 
   oidc:
-    image: docker.io/plainscope/simple-oidc-provider
+    image: ghcr.io/plainscope/simple-oidc-provider
     container_name: firefly-oidc
     environment:
       OIDC_PRESET: local

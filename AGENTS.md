@@ -6,34 +6,68 @@
 
 FireFly is an AI-powered, mastery-based coding education platform for kids (ages 8+). The primary feature is a **visual code stepper** that steps through execution line-by-line showing stack, heap, variables, and I/O. The platform adapts its UI to three age modes: Fun (8–10), Balanced (11–13), and Pro (14+).
 
-The product specification is in `docs/SPEC.md`. The implementation plan with task breakdown is in `docs/implementation-plan.md`. Always read both before starting significant work.
+The product specification is in `docs/SPEC.md`. The implementation plan with task breakdown is in `docs/implementation-plan.md`. Full documentation is in `docs/` organized by topic (architecture, API reference, guides).
 
 ## Repository structure
 
 ```
 FireFly/
 ├── code/
-│   ├── client/          # React + Vite SPA (currently JSX, migrating to TypeScript)
+│   ├── client/          # React + Vite + TypeScript SPA
 │   │   ├── src/
+│   │   │   ├── api/              # HTTP API client (client.ts)
+│   │   │   ├── assets/           # Static assets
 │   │   │   ├── components/
 │   │   │   │   ├── ui/           # shadcn/ui primitives — DO NOT manually edit
-│   │   │   │   ├── visualizer/   # Code stepper panes (code, stack, heap, output, controls)
+│   │   │   │   ├── visualizer/   # Code stepper panes (code, stack, heap, output, controls, AI)
 │   │   │   │   └── dashboard/    # Student progress widgets
-│   │   │   ├── pages/            # Route-level page components
-│   │   │   ├── lib/              # Contexts, auth, utilities
 │   │   │   ├── hooks/            # Custom React hooks
-│   │   │   ├── api/              # API client (currently a stub — needs rewrite)
-│   │   │   └── assets/           # Static assets
+│   │   │   ├── lib/              # Contexts (AuthContext, ThemeContext), utilities
+│   │   │   ├── pages/            # Route-level page components (8 pages)
+│   │   │   └── types/            # TypeScript type definitions (domain, API, trace)
 │   │   ├── vite.config.js
 │   │   ├── tailwind.config.js
+│   │   ├── Dockerfile
+│   │   ├── nginx.conf
 │   │   └── package.json
 │   │
-│   └── server/          # Node.js + Fastify + TypeScript API (EMPTY — needs scaffolding)
+│   └── server/          # Node.js + Fastify + TypeScript API
+│       ├── prisma/
+│       │   ├── schema.prisma     # 8 models, 4 enums
+│       │   └── migrations/       # Prisma migration files
+│       ├── src/
+│       │   ├── config/           # env.ts, database.ts, redis.ts
+│       │   ├── plugins/          # auth.ts, envelope.ts, request-id.ts
+│       │   └── routes/           # health, admin, auth, curriculum, execution, mastery, llm
+│       ├── tsconfig.json
+│       ├── Dockerfile
+│       └── package.json
 │
 ├── docs/
-│   ├── SPEC.md                    # Single source of truth — consolidated product spec
-│   ├── implementation-plan.md  # Task-level implementation plan with phases
+│   ├── SPEC.md                   # Product specification
+│   ├── implementation-plan.md    # Task-level implementation plan
+│   ├── architecture/             # System architecture docs
+│   │   ├── overview.md           # System diagram, tech stack, design decisions
+│   │   ├── backend.md            # Fastify server structure, plugins, routes
+│   │   ├── frontend.md           # React app structure, pages, components, contexts
+│   │   └── database.md           # Prisma schema, models, relationships, enums
+│   ├── api/                      # API reference docs
+│   │   ├── overview.md           # Envelope format, auth, error handling
+│   │   ├── auth.md               # OIDC login, callback, session endpoints
+│   │   ├── curriculum.md         # Concepts, lessons, exercises CRUD
+│   │   ├── execution.md          # Code execution, trace format
+│   │   ├── mastery.md            # BKT progress tracking
+│   │   └── ai.md                 # LLM explain, hint, chat
+│   └── guides/                   # How-to guides
+│       ├── getting-started.md    # Setup, prerequisites, first run
+│       ├── development.md        # Dev workflow, code style, adding features
+│       ├── deployment.md         # Docker Compose deployment, env vars
+│       ├── authentication.md     # OIDC flow, JWT tokens, onboarding
+│       ├── theming.md            # Fun/Balanced/Pro modes, CSS properties
+│       └── code-execution.md     # Judge0, Python tracer, trace pipeline
 │
+├── docker-compose.yml            # 7 services: postgres, redis, judge0, judge0-workers, oidc, server, client
+├── .env.example                  # Environment variable template (17 vars)
 ├── AGENTS.md
 ├── README.md
 └── LICENSE
@@ -41,7 +75,20 @@ FireFly/
 
 ## Current state
 
-The client has a UI shell with 7 pages, 50+ shadcn/ui components, and fully-built visualizer display panes — but **everything uses hardcoded mock data**. The backend (`code/server/`) is empty. There is no working auth, database, code execution, trace generation, AI integration, or adaptive theming. The API client at `code/client/src/api/client.js` is a stub that returns a config object with no methods. See `docs/implementation-plan.md` § "Current State Assessment" for the full gap analysis.
+The platform is **fully implemented** across 8 development waves plus Docker deployment:
+
+- **Wave 0**: Docker Compose infrastructure, backend scaffold, Vite proxy, full TypeScript migration, shared types
+- **Wave 1**: Prisma schema with migrations, Monaco Editor integration
+- **Wave 2**: Backend OIDC auth routes (PKCE), full API client rewrite
+- **Wave 3**: Auth UI (login/callback/onboarding), AuthContext, protected routes
+- **Wave 4**: Curriculum CRUD endpoints, Judge0 code execution with Python tracer
+- **Wave 5**: Curriculum, exercise, and visualizer pages wired to real API
+- **Wave 6**: Theme infrastructure (Fun/Balanced/Pro CSS), BKT mastery tracking
+- **Wave 7**: Dashboard wired to real data, mastery submission loop
+- **Wave 8**: AI integration (LLM proxy with age-adapted prompts)
+- **Docker**: Dockerfiles for client (Nginx) and server (Node.js), complete Docker Compose deployment
+
+All files are TypeScript (`.tsx`/`.ts`). The API client is fully implemented. The backend has working auth, database, code execution, trace generation, AI integration, and adaptive theming.
 
 ## Dev environment
 
@@ -50,37 +97,69 @@ The client has a UI shell with 7 pages, 50+ shadcn/ui components, and fully-buil
 - Node.js >= 20
 - Docker and Docker Compose
 - Git
+- LM Studio (optional, for AI features)
 
-### Client setup
+### Quick start (Docker Compose)
 
 ```bash
+cp .env.example .env
+docker compose up -d
+curl -X POST http://localhost:3000/api/v1/admin/seed
+# Open http://localhost:80
+```
+
+### Development (hot reload)
+
+```bash
+# Start infrastructure
+docker compose up -d postgres redis judge0 judge0-workers oidc
+
+# Server
+cd code/server
+npm install
+npx prisma generate
+npx prisma migrate deploy
+npm run dev    # Fastify on http://localhost:3000
+
+# Client (separate terminal)
 cd code/client
 npm install
-npm run dev        # Starts Vite dev server on http://localhost:5173
+npm run dev    # Vite on http://localhost:5173
 ```
+
+### Default login credentials
+
+- **Email**: `admin@localhost`
+- **Password**: `Rays-93-Accident`
 
 ### Client commands
 
 | Command | Purpose |
 |---------|---------|
-| `npm run dev` | Start Vite dev server (port 5173) |
+| `npm run dev` | Start Vite dev server (port 5173, proxies /api to 3000) |
 | `npm run build` | Production build to `dist/` |
 | `npm run lint` | Run ESLint (quiet mode) |
 | `npm run lint:fix` | Auto-fix lint errors |
 | `npm run preview` | Preview production build |
 
-### Server setup (once scaffolded)
+### Server commands
+
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Start with tsx watch (auto-reload) |
+| `npm run build` | Compile TypeScript to `dist/` |
+| `npm start` | Run compiled output |
+| `npx prisma generate` | Regenerate Prisma client |
+| `npx prisma migrate dev` | Create new migration |
+| `npx prisma migrate deploy` | Apply pending migrations |
+| `npx prisma studio` | Open database GUI |
+
+### Full stack (Docker Compose)
 
 ```bash
-cd code/server
-npm install
-npm run dev        # Starts Fastify on http://localhost:3000
-```
-
-### Full stack (once Docker Compose exists)
-
-```bash
-docker compose up -d   # Postgres, Redis, Judge0, API, Client
+docker compose up -d     # All 7 services
+docker compose down       # Stop all
+docker compose up -d --build  # Rebuild after code changes
 ```
 
 ## Code style and conventions
@@ -88,53 +167,67 @@ docker compose up -d   # Postgres, Redis, Judge0, API, Client
 ### General rules
 
 - Use **functional components** with React hooks. No class components.
-- Use `@/` path alias for all imports from `src/` (configured in `vite.config.js` and `jsconfig.json`).
+- Use `@/` path alias for all imports from `src/` (configured in `vite.config.js` and `tsconfig.json`).
+- All files use **TypeScript** (`.tsx`/`.ts`).
 - Prefix unused variables with `_` (ESLint enforces this).
-- No semicolons and single quotes are NOT enforced — the project uses semicolons and double quotes.
+- The project uses semicolons and double quotes.
 - All timestamps must be ISO 8601 UTC strings.
 
-### Client (React + Vite)
+### Client (React + Vite + TypeScript)
 
 - **Component library**: shadcn/ui (New York style). Add new UI primitives via `npx shadcn@latest add <component>`. Never manually edit files in `src/components/ui/`.
-- **Styling**: Tailwind CSS with CSS custom properties for theming. Colors use `hsl(var(--token))` pattern. See `tailwind.config.js` and `src/index.css`.
-- **State management**: React Context for global state (auth, theme). TanStack Query (`@tanstack/react-query`) for server state.
-- **Routing**: `react-router-dom` v6. Route definitions in `src/pages.config.js`, page components in `src/pages/`.
+- **Styling**: Tailwind CSS with CSS custom properties for theming. Colors use `hsl(var(--token))` pattern. Three theme modes: `.theme-fun`, `.theme-balanced`, `.theme-pro`.
+- **State management**: React Context for global state (AuthContext, ThemeContext). TanStack Query for server state.
+- **Routing**: `react-router-dom` v6. Route definitions in `src/pages.config.ts`, page components in `src/pages/`.
 - **Icons**: Lucide React (`lucide-react`).
-- **Animation**: Framer Motion for transitions. PixiJS for 2D sprite animations (Fun mode). Three.js for 3D visualizations (Pro mode).
+- **Animation**: Framer Motion for transitions.
 - **Forms**: `react-hook-form` + `zod` for validation.
-- **File naming**: kebab-case for component files (e.g., `stepper-controls.jsx`). PascalCase for component names.
-- **Current files are `.jsx`/`.js`** — the plan is to migrate to `.tsx`/`.ts`. When creating new files, use TypeScript (`.tsx`/`.ts`).
+- **Code editor**: Monaco Editor (`@monaco-editor/react`).
+- **File naming**: kebab-case for component files (e.g., `stepper-controls.tsx`). PascalCase for component names.
+- **Theme-aware sizing**: Use `ff-text-*` and `ff-rounded` utility classes for adaptive sizing.
 
 ### Server (Node.js + Fastify + TypeScript)
 
-The server does not exist yet. When building it, follow these conventions from `docs/SPEC.md`:
-
 - **Framework**: Fastify with TypeScript.
-- **Validation**: Zod or JSON Schema on all route inputs.
-- **ORM**: Prisma with PostgreSQL.
-- **API envelope**: Every response must use the standardized envelope:
-  ```json
-  {
-    "status": "success",
-    "code": 200,
-    "requestId": "uuid-v4",
-    "data": {},
-    "meta": { "schemaVersion": "1.0" }
-  }
-  ```
-- **Error envelope**:
-  ```json
-  {
-    "status": "error",
-    "code": 400,
-    "requestId": "uuid-v4",
-    "error": { "type": "ValidationError", "message": "...", "details": [] }
-  }
-  ```
-- **Request tracing**: Accept `X-Request-Id` header, generate UUID v4 if missing, echo in response.
-- **Auth**: JWT (access + refresh tokens). Middleware attaches `request.user`. Role-based access: student, teacher, parent, admin.
-- **Pagination**: Cursor-based with `meta.cursor`, `meta.limit`, `meta.hasMore`.
-- **Routes**: All under `/api/v1/`. See SPEC.md §11 for the full endpoint list.
+- **Validation**: Zod on route inputs.
+- **ORM**: Prisma with PostgreSQL (`@prisma/adapter-pg`).
+- **API envelope**: Every response uses `reply.envelope(data)` or `reply.envelopeError(code, type, message)`.
+- **Request tracing**: `X-Request-Id` header (UUID v4, auto-generated if missing).
+- **Auth**: OIDC login + JWT (access 15min + refresh 7d). Decorators: `fastify.authenticate`, `fastify.requireRole(...)`.
+- **Routes**: All under `/api/v1/`.
+
+## API endpoints
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET` | `/health` | No | Health check |
+| `POST` | `/admin/seed` | No | Seed database |
+| `GET` | `/auth/login` | No | Initiate OIDC login |
+| `GET` | `/auth/callback` | No | OIDC callback |
+| `GET` | `/auth/me` | Yes | Current user profile |
+| `POST` | `/auth/refresh` | No | Refresh JWT |
+| `POST` | `/auth/onboard` | Yes | Complete onboarding |
+| `POST` | `/auth/logout` | No | Clear session |
+| `GET` | `/concepts` | Yes | List concepts |
+| `GET` | `/concepts/:id` | Yes | Get concept |
+| `POST` | `/concepts` | Admin | Create concept |
+| `GET` | `/lessons` | Yes | List lessons |
+| `GET` | `/lessons/:id` | Yes | Get lesson with exercises |
+| `POST` | `/lessons` | Admin | Create lesson |
+| `GET` | `/exercises` | Yes | List exercises |
+| `GET` | `/exercises/:id` | Yes | Get exercise |
+| `POST` | `/exercises` | Admin | Create exercise |
+| `POST` | `/execution/run` | Yes | Execute code |
+| `GET` | `/execution/jobs/:id` | Yes | Job status |
+| `GET` | `/execution/jobs/:id/trace` | Yes | Execution trace |
+| `GET` | `/progress/:userId` | Yes | Full mastery map |
+| `POST` | `/progress/:userId/update` | Yes | Submit attempt (BKT update) |
+| `GET` | `/progress/:userId/concept/:conceptId` | Yes | Concept mastery detail |
+| `POST` | `/ai/explain` | Yes | AI code explanation |
+| `POST` | `/ai/hint` | Yes | AI exercise hint |
+| `POST` | `/ai/chat` | Yes | AI conversation |
+
+See `docs/api/` for detailed request/response documentation.
 
 ## Testing
 
@@ -143,7 +236,7 @@ The server does not exist yet. When building it, follow these conventions from `
 No test framework is configured yet. When adding tests:
 
 - Use **Vitest** + **React Testing Library** for component tests.
-- Snapshot tests for visualizer panes (`code-pane`, `stack-pane`, `heap-pane`, `output-pane`).
+- Snapshot tests for visualizer panes.
 - Interaction tests for stepper controls and auth forms.
 
 ### Server
@@ -152,67 +245,73 @@ When adding tests:
 
 - Use **Vitest** for unit and integration tests.
 - Test all route handlers with mock DB.
-- Validate trace output against the schema in SPEC.md §12.
-- Validate API responses match the envelope format.
+- Validate trace output and API envelope format.
 
 ### E2E
 
 - Use **Playwright** for end-to-end smoke tests.
-- Critical path: register → login → browse curriculum → open exercise → run code → view trace → check mastery update.
+- Critical path: login → browse curriculum → open exercise → run code → view trace → check mastery update.
 
 ## Architecture decisions
 
-- **Execution engine**: Self-hosted Judge0 (primary). OneCompiler API as SaaS fallback. All student code runs in isolated Docker containers with strict CPU/memory/time limits and no network access.
-- **Trace format**: Canonical JSON schema (SPEC.md §12). Frames include: step, timeMs, file, line, event type (line/call/return/exception/assign/io), stack frames with locals, heap objects with stable IDs, stdout/stderr.
-- **Adaptive UI**: React Context (`ThemeContext`) drives Fun/Balanced/Pro mode. Tailwind CSS custom properties switch palettes. Components accept a `mode` prop for variant rendering.
-- **Mastery model**: Bayesian Knowledge Tracing per concept. Threshold ≥ 0.80 + transfer check to unlock next concept.
-- **AI/LLM**: Pluggable provider (OpenAI default, Anthropic, local Llama). All prompts include `{userAge}` and `{mode}` for tone calibration. Responses cached in Redis.
-- **Database**: PostgreSQL for relational data. Redis for sessions, caching, job queues.
+- **Authentication**: OIDC via `ghcr.io/plainscope/simple-oidc-provider` + JWT tokens. Separates identity management from application concerns.
+- **Execution engine**: Self-hosted Judge0 in Docker Compose. Python code wrapped with `sys.settrace()` tracer to capture per-step execution data.
+- **Trace format**: JSON array of frames with step, line, event, funcName, locals, stack, stdout, stderr.
+- **Adaptive UI**: ThemeContext drives Fun/Balanced/Pro mode via CSS custom properties on `<html>`. Pro mode additionally applies `.dark` class.
+- **Mastery model**: Bayesian Knowledge Tracing per concept (pL0=0.10, pT=0.20, pG=0.25, pS=0.10). Threshold ≥ 0.80 to master + unlock dependents.
+- **AI/LLM**: OpenAI-compatible API via LM Studio (localhost:1234). Three age-adapted system prompts. Hint mode prevents giving full solutions.
+- **Database**: PostgreSQL (Prisma ORM) for relational data. Redis for PKCE verifier storage, sessions, caching.
 
 ## Key files to know
 
 | File | What it does |
 |------|-------------|
-| `code/client/src/app.jsx` | Root component: AuthProvider → QueryClientProvider → Router |
-| `code/client/src/layout.jsx` | App shell: nav bar, user display, mobile menu |
-| `code/client/src/pages.config.js` | Route definitions mapping page names to paths and components |
-| `code/client/src/api/client.js` | **STUB** — needs full rewrite to real HTTP client |
-| `code/client/src/lib/AuthContext.jsx` | Auth context — imports missing `@firefly/sdk` that must be removed |
-| `code/client/src/pages/visualizer.jsx` | Core feature page: 4-pane stepper with mock execution |
-| `code/client/src/components/visualizer/mock-trace.jsx` | 10-frame hardcoded bubble sort trace |
-| `code/client/src/components/visualizer/stepper-controls.jsx` | Play/pause/step controls for the trace stepper |
-| `docs/SPEC.md` | **Read this first** — consolidated product specification |
-| `docs/implementation-plan.md` | Task-level work plan with phases and acceptance criteria |
-
-## Known issues and traps
-
-1. **`@firefly/sdk` does not exist.** `AuthContext.jsx` imports `createAxiosClient` from `@firefly/sdk/dist/utils/axios-client` — this package is not in `package.json` and is not installed. Remove this import and replace with a real API client when building auth.
-
-2. **`AppContext.jsx` is a dead duplicate.** It exports the same `useAuth` name as `AuthContext.jsx` but is unused. Delete it during cleanup.
-
-3. **`api/client.js` returns a config object, not an API client.** Every `client.auth.*`, `client.entities.*`, and `client.integrations.*` call throughout the codebase will fail at runtime. All data-fetching pages fall back to hardcoded `MOCK_*` arrays.
-
-4. **No Vite proxy is configured.** The client expects `/api/` requests to reach the backend but `vite.config.js` has no proxy setting. Add one when the backend exists.
-
-5. **Exercise code editor is a `<textarea>`.** Monaco Editor is not yet installed. Replace with `@monaco-editor/react` when building code execution features.
-
-6. **Age groups on the home page show 6–9 / 10–13 / 14–17** but the spec standardized on **8–10 / 11–13 / 14+**. Update the home page when implementing the adaptive UI engine.
-
-7. **Unused dependencies** in `package.json`: Stripe, react-leaflet, react-quill, jspdf, html2canvas — these are not used anywhere. Consider removing during cleanup.
+| `code/client/src/app.tsx` | Root component: AuthProvider → ThemeProvider → QueryClientProvider → Router |
+| `code/client/src/layout.tsx` | App shell: nav bar, user display, mobile menu |
+| `code/client/src/pages.config.ts` | Route definitions mapping page names to paths and components |
+| `code/client/src/api/client.ts` | Full HTTP API client with auth, entities, execution, progress, AI methods |
+| `code/client/src/lib/AuthContext.tsx` | Auth context: OIDC token handling, user loading, login/logout |
+| `code/client/src/lib/ThemeContext.tsx` | Theme context: Fun/Balanced/Pro mode switching, CSS class management |
+| `code/client/src/pages/visualizer.tsx` | Core feature: 4-pane visual stepper with trace rendering |
+| `code/client/src/pages/exercise.tsx` | Exercise list + editor + execution + mastery feedback |
+| `code/client/src/pages/dashboard.tsx` | Student progress dashboard with mastery map |
+| `code/client/src/index.css` | Theme CSS custom properties for all three modes |
+| `code/server/src/index.ts` | Server entry: Fastify setup, plugins, routes, graceful shutdown |
+| `code/server/src/config/env.ts` | Zod-validated environment variables |
+| `code/server/src/plugins/auth.ts` | JWT auth plugin with authenticate/requireRole decorators |
+| `code/server/src/plugins/envelope.ts` | Standardized response envelope decorators |
+| `code/server/src/routes/auth.ts` | OIDC login/callback, JWT tokens, onboarding |
+| `code/server/src/routes/execution.ts` | Judge0 submission, polling, Python tracer, trace parsing |
+| `code/server/src/routes/mastery.ts` | BKT algorithm, mastery tracking, concept unlocking |
+| `code/server/src/routes/llm.ts` | AI proxy: explain, hint, chat with age-adapted prompts |
+| `code/server/prisma/schema.prisma` | Database models: User, Concept, Lesson, Exercise, ExecutionJob, MasteryRecord |
+| `docker-compose.yml` | 7-service stack: postgres, redis, judge0, judge0-workers, oidc, server, client |
+| `docs/SPEC.md` | Product specification |
+| `docs/implementation-plan.md` | Task-level work plan |
 
 ## Security considerations
 
 - **COPPA compliance**: Parental consent required for users under 13. Never store unnecessary personal data for minors.
-- **Sandboxing**: All user-submitted code must execute in isolated containers with no network access, no filesystem persistence, and strict resource limits.
-- **LLM safety**: All AI output must pass through a moderation layer. Never generate full solutions unless in explicit "show solution" mode.
-- **Auth**: Use bcrypt for password hashing. JWT access tokens should be short-lived (15 min). Refresh tokens must support rotation.
-- **Input validation**: Validate all inputs server-side with Zod/JSON Schema. Never trust client-provided data.
-- **Rate limiting**: Apply per-user rate limits on execution (10/min) and LLM (20/min) endpoints.
+- **Sandboxing**: All user-submitted code executes in isolated Judge0 containers with no network access, no filesystem persistence, and strict resource limits.
+- **LLM safety**: Hint mode includes instruction to never provide full solutions. AI output should pass through a moderation layer in production.
+- **Auth**: OIDC for identity, JWT access tokens (15min), refresh tokens (7d) as httpOnly cookies. PKCE for authorization code exchange.
+- **Input validation**: Validate all inputs server-side with Zod. Never trust client-provided data.
+- **Rate limiting**: Apply per-user rate limits on execution (10/min) and LLM (20/min) endpoints in production.
 
 ## PR and commit guidelines
 
 - Commit messages: imperative mood, concise. E.g., `Add JWT auth middleware`, `Wire curriculum page to real API`.
 - PR title format: `[area] Description` — e.g., `[server] Add auth routes`, `[client] Replace textarea with Monaco editor`.
 - Run `npm run lint` in `code/client/` before committing client changes.
-- Run `npm test` (once configured) before committing server changes.
+- Run `npm run build` in `code/server/` before committing server changes.
 - All CI checks must pass before merging.
+
+## Documentation
+
+Comprehensive documentation is available in `docs/`:
+
+| Section | Path | Description |
+|---------|------|-------------|
+| Architecture | `docs/architecture/` | System overview, backend, frontend, database |
+| API Reference | `docs/api/` | Endpoints, request/response shapes, envelope format |
+| Guides | `docs/guides/` | Getting started, development, deployment, auth, theming, execution |
