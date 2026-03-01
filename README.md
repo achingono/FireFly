@@ -335,6 +335,47 @@ docker compose logs -f client      # Follow client logs
 5. Commit with imperative mood (e.g., `Add JWT auth middleware`)
 6. Open a Pull Request with title format: `[area] Description`
 
+## Credits & Acknowledgments
+
+FireFly is built on the shoulders of brilliant open-source projects and tools:
+
+**Frontend**
+- [React](https://react.dev/) — UI library foundation
+- [Vite](https://vitejs.dev/) — Lightning-fast build tool and dev server
+- [Tailwind CSS](https://tailwindcss.com/) — Utility-first CSS framework for rapid UI development
+- [shadcn/ui](https://ui.shadcn.com/) — High-quality, customizable React components
+- [Monaco Editor](https://microsoft.github.io/monaco-editor/) — Code editor powering VS Code
+- [Framer Motion](https://www.framer.com/motion/) — Smooth animation library
+- [TanStack Query](https://tanstack.com/query/latest) — Server state management
+- [react-router-dom](https://reactrouter.com/) — Client-side routing
+- [react-hook-form](https://react-hook-form.com/) — Performant form handling
+- [Zod](https://zod.dev/) — Schema validation
+- [Lucide React](https://lucide.dev/) — Beautiful SVG icons
+
+**Backend**
+- [Node.js](https://nodejs.org/) — JavaScript runtime
+- [Fastify](https://www.fastify.io/) — Fast, low-overhead web framework
+- [TypeScript](https://www.typescriptlang.org/) — Type-safe JavaScript
+- [Prisma](https://www.prisma.io/) — Modern ORM and schema management
+
+**Infrastructure & Services**
+- [PostgreSQL](https://www.postgresql.org/) — Reliable relational database
+- [Redis](https://redis.io/) — In-memory data store for caching and sessions
+- [Judge0](https://judge0.com/) — Cloud-based code execution engine
+- [plainscope/simple-oidc-provider](https://github.com/plainscope/simple-oidc-provider) — Lightweight OIDC provider
+- [Docker](https://www.docker.com/) & [Docker Compose](https://docs.docker.com/compose/) — Containerization and orchestration
+
+**AI & Learning**
+- [OpenAI API](https://openai.com/api/) — LLM foundation
+- [LM Studio](https://lmstudio.ai/) — Local LLM inference
+- [Python Tutor](https://pythontutor.com/) — Inspiration for the visual code stepper
+
+**Development & Tooling**
+- [TypeScript](https://www.typescriptlang.org/) — Type safety across the stack
+- [ESLint](https://eslint.org/) — Code quality and consistency
+
+Thank you to all contributors, maintainers, and the open-source community!
+
 ## License
 
 See [LICENSE](LICENSE) for details.
