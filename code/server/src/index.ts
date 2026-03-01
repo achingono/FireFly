@@ -7,6 +7,8 @@ import healthRoutes from "./routes/health.js";
 import adminRoutes from "./routes/admin.js";
 import authPlugin from "./plugins/auth.js";
 import authRoutes from "./routes/auth.js";
+import curriculumRoutes from "./routes/curriculum.js";
+import executionRoutes from "./routes/execution.js";
 import prisma from "./config/database.js";
 import redis from "./config/redis.js";
 
@@ -29,6 +31,8 @@ async function start() {
   await app.register(healthRoutes);
   await app.register(adminRoutes);
   await app.register(authRoutes);
+  await app.register(curriculumRoutes);
+  await app.register(executionRoutes);
 
   // Global error handler
   app.setErrorHandler((error: Error & { statusCode?: number }, _request, reply) => {
