@@ -16,7 +16,7 @@ const envSchema = z.object({
   OIDC_CLIENT_SECRET: z.string().default("firefly-secret"),
   OIDC_REDIRECT_URI: z
     .string()
-    .default("http://localhost:5173/auth/callback"),
+    .default("http://localhost:3000/api/v1/auth/callback"),
   JWT_SECRET: z.string().default("change-me-in-production"),
   JWT_EXPIRES_IN: z.string().default("15m"),
   JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),

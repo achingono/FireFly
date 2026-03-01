@@ -1,0 +1,46 @@
+[
+    {
+    "id": "945dc90b-02ac-43e5-a4ab-2db744dce149",
+    "email": "admin@localhost",
+    "email_verified": true,
+    "name": "Administrator Account",
+    "nickname": "admin",
+    "given_name": "Administrator",
+    "family_name": "Account",
+    "password": "Divide-30-Weight",
+    "groups": ["Everyone", "Administrators"]
+    },
+    {
+    "id": "78c1c098-34a8-4bd6-93df-258748f51b48",
+    "email": "student@localhost",
+    "email_verified": true,
+    "name": "Student Account",
+    "nickname": "student",
+    "given_name": "Student",
+    "family_name": "Account",
+    "password": "Improve-20-Oil",
+    "groups": ["Everyone", "Students"]
+    },
+    {
+    "id": "b85bc752-1248-4d0c-9275-04fd5e399f5d",
+    "email": "teacher@localhost",
+    "email_verified": true,
+    "name": "Teacher Account",
+    "nickname": "teacher",
+    "given_name": "Teacher",
+    "family_name": "Account",
+    "password": "Fuel-74-Garden",
+    "groups": ["Everyone", "Teachers"]
+    },
+    {
+    "id": "fa6c7a8c-05f2-4041-96c4-3dbad71a3fd2",
+    "email": "parent@localhost",
+    "email_verified": true,
+    "name": "Parent Account",
+    "nickname": "parent",
+    "given_name": "Parent",
+    "family_name": "Account",
+    "password": "Guard-42-Dream",
+    "groups": ["Everyone", "Parents"]
+    }
+]

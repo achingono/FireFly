@@ -142,18 +142,20 @@ cp .env.example .env
 docker compose up -d
 
 # Seed sample data (concepts, lessons, exercises)
-curl -X POST http://localhost:3000/api/v1/admin/seed
+curl -X POST -k https://localhost:8443/api/v1/admin/seed
 
-# Open the app
-open http://localhost:80
+# Open the app (note: accept the self-signed certificate warning)
+open https://localhost:8443
 ```
+
+**Security Note**: The app uses a self-signed TLS certificate for local development. Your browser will show a security warning — click "Advanced" → "Proceed to localhost (unsafe)" to continue. All traffic is encrypted through nginx TLS termination on port 8443.
 
 ### Default Login Credentials
 
 The OIDC provider is pre-configured with a test account:
 
 - **Email**: `admin@localhost`
-- **Password**: `Rays-93-Accident`
+- **Password**: `Divide-30-Weight`
 
 ### Development (Hot Reload)
 

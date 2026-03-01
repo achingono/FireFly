@@ -22,7 +22,7 @@ const app = Fastify({
 async function start() {
   // Register plugins
   await app.register(cors, {
-    origin: ["http://localhost:5173"],
+    origin: ["http://localhost:5173", "https://localhost"],
     credentials: true,
   });
   await app.register(requestIdPlugin);

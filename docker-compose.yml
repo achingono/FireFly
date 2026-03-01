@@ -1,4 +1,36 @@
 services:
+  nginx:
+    image: nginx:alpine
+    container_name: firefly-nginx
+    ports:
+      - "${PROXY_HTTP_PORT:-9080}:${PROXY_HTTP_PORT:-9080}"
+      - "${PROXY_HTTPS_PORT:-9443}:${PROXY_HTTPS_PORT:-9443}"
+      - "${PROXY_OIDC_HTTPS_PORT:-4443}:${PROXY_OIDC_HTTPS_PORT:-4443}"
+    environment:
+      HTTP_PORT: ${PROXY_HTTP_PORT:-9080}
+      HTTPS_PORT: ${PROXY_HTTPS_PORT:-9443}
+      CLIENT_HOST: client
+      CLIENT_PORT: 8080
+      API_HOST: server
+      API_PORT: 8080
+      OIDC_HOST: oidc
+      OIDC_PORT: 8080
+      OIDC_HTTPS_PORT: ${PROXY_OIDC_HTTPS_PORT:-4443}
+      SOURCE_PORT: ${PROXY_HTTPS_PORT:-9443}
+    volumes:
+      - ./config/nginx/templates/dev.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./config/nginx/snippets:/etc/nginx/snippets:ro
+      - ./config/nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      client:
+        condition: service_healthy
+      server:
+        condition: service_healthy
+      oidc:
+        condition: service_started
+    networks:
+      - firefly
+
   postgres:
     image: postgres:16-alpine
     container_name: firefly-postgres
@@ -21,8 +53,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: firefly-redis
-    ports:
-      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -41,8 +71,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-firefly}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-firefly_dev}
       REDIS_URL: redis://redis:6379
-    ports:
-      - "2358:2358"
     depends_on:
       postgres:
         condition: service_healthy
@@ -71,13 +99,27 @@ services:
     image: ghcr.io/plainscope/simple-oidc-provider
     container_name: firefly-oidc
     environment:
-      OIDC_PRESET: local
-      ISSUER: http://localhost:8080
-      CLIENT_ID: firefly
-      CLIENT_SECRET: firefly-secret
-      REDIRECT_URIS: http://localhost:5173/auth/callback
-    ports:
-      - "8080:8080"
+      CLIENT_ID: ${OIDC_CLIENT_ID:-firefly}
+      CLIENT_NAME: ${OIDC_CLIENT_NAME:-FireFly}
+      CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-firefly-secret}
+      COOKIES_SECURE: "false"
+      COOKIES_SAMESITE: Lax
+      COOKIES_KEYS: '["59761AB67FB5BA23BDD917B2F2E409394A848F50FA9CEB08860C73495339266E"]'
+      DIRECTORY_USERS_FILE: /app/config/users.json
+      ISSUER: https://localhost:${PROXY_OIDC_HTTPS_PORT:-4443}
+      NODE_ENV: development
+      PORT: 8080
+      PROXY: true
+      POST_LOGOUT_REDIRECT_URIS: >-
+        https://localhost:${PROXY_HTTPS_PORT:-9443}/api/v1/auth/callback,
+        http://localhost:8080/api/v1/auth/callback,
+        http://10.0.2.2:8080/api/v1/auth/callback
+      REDIRECT_URIS: >-
+        https://localhost:${PROXY_HTTPS_PORT:-9443}/api/v1/auth/callback,
+        http://localhost:8080/api/v1/auth/callback,
+        http://10.0.2.2:8080/api/v1/auth/callback
+    volumes:
+      - ./config/oidc/users.json:/app/config/users.json:ro
     networks:
       - firefly
 
@@ -86,24 +128,28 @@ services:
       context: ./code/server
       dockerfile: Dockerfile
     container_name: firefly-server
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/api/v1/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     environment:
       NODE_ENV: production
-      PORT: "3000"
+      PORT: "8080"
       DATABASE_URL: postgresql://${POSTGRES_USER:-firefly}:${POSTGRES_PASSWORD:-firefly_dev}@postgres:5432/${POSTGRES_DB:-firefly}
       REDIS_URL: redis://redis:6379
       JUDGE0_URL: http://judge0:2358
       OIDC_ISSUER: http://oidc:8080
-      OIDC_CLIENT_ID: firefly
-      OIDC_CLIENT_SECRET: firefly-secret
-      OIDC_REDIRECT_URI: http://localhost:5173/auth/callback
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-firefly}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-firefly-secret}
+      OIDC_REDIRECT_URI: https://localhost:${PROXY_HTTPS_PORT:-9443}/api/v1/auth/callback
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
       LLM_PROVIDER: ${LLM_PROVIDER:-lmstudio}
       LLM_BASE_URL: http://host.docker.internal:1234
-      CLIENT_ORIGIN: http://localhost:5173
-    ports:
-      - "3000:3000"
+      CLIENT_ORIGIN: https://localhost:${PROXY_HTTPS_PORT:-9443}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -121,8 +167,15 @@ services:
       context: ./code/client
       dockerfile: Dockerfile
     container_name: firefly-client
-    ports:
-      - "5173:5173"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    environment:
+      NODE_ENV: ${NODE_ENVIRONMENT:-development}
+      PORT: 8080
     depends_on:
       - server
     networks:

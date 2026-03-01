@@ -130,7 +130,7 @@ npm run dev    # Vite on http://localhost:5173
 ### Default login credentials
 
 - **Email**: `admin@localhost`
-- **Password**: `Rays-93-Accident`
+- **Password**: `Divide-30-Weight`
 
 ### Client commands
 

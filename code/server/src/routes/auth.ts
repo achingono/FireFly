@@ -6,11 +6,55 @@ import redis from "../config/redis.js";
 
 // OIDC configuration — lazily initialized
 let oidcConfig: client.Configuration | null = null;
+// The public issuer URL from OIDC metadata (e.g. https://localhost:4443).
+// Used to rewrite internal Docker URLs to browser-accessible URLs.
+let oidcPublicIssuer: string = env.OIDC_ISSUER;
+
+// Cookie security: derived from NODE_ENV unless explicitly overridden
+const isSecureCookie = env.NODE_ENV === "production";
+
+/** Convert a duration string like "15m" or "7d" to seconds. */
+function durationToSeconds(duration: string): number {
+  const match = duration.match(/^(\d+)([smhd])$/);
+  if (!match) return 900; // fallback: 15 min
+  const value = parseInt(match[1], 10);
+  switch (match[2]) {
+    case "s": return value;
+    case "m": return value * 60;
+    case "h": return value * 3600;
+    case "d": return value * 86400;
+    default: return 900;
+  }
+}
+
+const ACCESS_TOKEN_MAX_AGE = durationToSeconds(env.JWT_EXPIRES_IN);
+const REFRESH_TOKEN_MAX_AGE = durationToSeconds(env.JWT_REFRESH_EXPIRES_IN);
 
 async function getOidcConfig(): Promise<client.Configuration> {
   if (oidcConfig) return oidcConfig;
-  const issuer = new URL(env.OIDC_ISSUER);
-  oidcConfig = await client.discovery(issuer, env.OIDC_CLIENT_ID, env.OIDC_CLIENT_SECRET);
+  const issuerUrl = new URL(env.OIDC_ISSUER);
+
+  // When the server reaches the OIDC provider via an internal Docker network URL
+  // (e.g. http://oidc:8080) but the provider advertises a public issuer URL
+  // (e.g. https://localhost:4443), openid-client's discovery() will reject the
+  // mismatch.  Work around this by fetching the metadata manually and using the
+  // Configuration constructor, which skips issuer-URL validation.
+  const wellKnown = new URL('/.well-known/openid-configuration', issuerUrl);
+  const res = await fetch(wellKnown.href);
+  if (!res.ok) {
+    throw new Error(`OIDC discovery failed: ${res.status} ${res.statusText}`);
+  }
+  const metadata = (await res.json()) as client.ServerMetadata;
+
+  // Store the public issuer URL from metadata for URL rewriting
+  oidcPublicIssuer = metadata.issuer;
+
+  oidcConfig = new client.Configuration(metadata, env.OIDC_CLIENT_ID, env.OIDC_CLIENT_SECRET);
+
+  // In Docker, the server reaches the OIDC provider via HTTP (e.g. http://oidc:8080).
+  // oauth4webapi enforces HTTPS by default; allow HTTP for internal network calls.
+  client.allowInsecureRequests(oidcConfig);
+
   return oidcConfig;
 }
 
@@ -60,7 +104,12 @@ const authRoutes: FastifyPluginAsync = async (app) => {
       state,
     });
 
-    return reply.redirect(redirectTo.href);
+    // Rewrite internal OIDC URL to browser-accessible public OIDC URL.
+    // metadata.issuer is the public URL (e.g. https://localhost:4443) while
+    // the endpoint URLs use the Docker-internal base (e.g. http://oidc:8080).
+    const publicUrl = redirectTo.href.replace(env.OIDC_ISSUER, oidcPublicIssuer);
+
+    return reply.redirect(publicUrl);
   });
 
   // ─── GET /api/v1/auth/callback — OIDC callback ───
@@ -85,8 +134,9 @@ const authRoutes: FastifyPluginAsync = async (app) => {
     try {
       const config = await getOidcConfig();
 
-      // Build the full callback URL from the request
-      const callbackUrl = new URL(`${request.protocol}://${request.hostname}${request.url}`);
+      // Reconstruct the full callback URL including query params.
+      // authorizationCodeGrant parses the code, state, and iss from the URL.
+      const callbackUrl = new URL(`${env.OIDC_REDIRECT_URI}?${new URLSearchParams(request.query as Record<string, string>).toString()}`);
 
       const tokens = await client.authorizationCodeGrant(config, callbackUrl, {
         pkceCodeVerifier: codeVerifier,
@@ -125,22 +175,22 @@ const authRoutes: FastifyPluginAsync = async (app) => {
       // Set tokens as cookies
       void reply.setCookie("access_token", accessToken, {
         httpOnly: true,
-        secure: false, // dev mode
+        secure: isSecureCookie,
         sameSite: "lax",
         path: "/",
-        maxAge: 900, // 15 min
+        maxAge: ACCESS_TOKEN_MAX_AGE,
       });
 
       void reply.setCookie("refresh_token", refreshToken, {
         httpOnly: true,
-        secure: false,
+        secure: isSecureCookie,
         sameSite: "lax",
         path: "/api/v1/auth",
-        maxAge: 604800, // 7 days
+        maxAge: REFRESH_TOKEN_MAX_AGE,
       });
 
       // Redirect to client with token (client will store it)
-      const clientRedirect = new URL(`${env.CLIENT_ORIGIN}/auth/callback`);
+      const clientRedirect = new URL(`${env.CLIENT_ORIGIN}/Auth`);
       clientRedirect.searchParams.set("token", accessToken);
       clientRedirect.searchParams.set("onboarded", user.onboarded ? "true" : "false");
 
@@ -209,18 +259,18 @@ const authRoutes: FastifyPluginAsync = async (app) => {
 
       void reply.setCookie("access_token", newAccessToken, {
         httpOnly: true,
-        secure: false,
+        secure: isSecureCookie,
         sameSite: "lax",
         path: "/",
-        maxAge: 900,
+        maxAge: ACCESS_TOKEN_MAX_AGE,
       });
 
       void reply.setCookie("refresh_token", newRefreshToken, {
         httpOnly: true,
-        secure: false,
+        secure: isSecureCookie,
         sameSite: "lax",
         path: "/api/v1/auth",
-        maxAge: 604800,
+        maxAge: REFRESH_TOKEN_MAX_AGE,
       });
 
       return reply.envelope({ token: newAccessToken });
