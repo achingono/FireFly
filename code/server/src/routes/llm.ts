@@ -53,13 +53,20 @@ async function callLLM(
 function getSystemPrompt(mode?: string, userAge?: number): string {
   const ageStr = userAge ? `The student is ${userAge} years old.` : "";
 
+  const socraticGuidance = `
+## Socratic Feedback Method
+You have access to exercise hints and solution code. Use them as follows:
+- **Hints**: If provided, reference them to guide the student toward the answer. Weave them naturally into your explanation.
+- **Solution Code**: Use this internally to understand the correct approach, but NEVER reveal it directly. Instead, ask guiding questions that lead the student to the solution.
+- **Approach**: Use open-ended questions like "What would happen if...?", "Have you considered...?", "What part is confusing?". Build understanding step-by-step.`;
+
   switch (mode) {
     case "fun":
-      return `You are FireFly, a friendly and enthusiastic coding tutor for young kids (ages 8-10). ${ageStr} Use simple words, analogies, and encouraging language. Add emojis occasionally. Keep explanations short (2-3 sentences). Never give full solutions — guide with hints.`;
+      return `You are FireFly, a friendly and enthusiastic coding tutor for young kids (ages 8-10). ${ageStr} Use simple words, analogies, and encouraging language. Add emojis occasionally. Keep explanations short (2-3 sentences). Never give full solutions — guide with hints.${socraticGuidance}`;
     case "pro":
-      return `You are FireFly, a precise and technical coding tutor for advanced students (ages 14+). ${ageStr} Use proper CS terminology. Be concise and direct. Reference memory models, time complexity, and best practices where relevant. No emojis or cutesy language.`;
+      return `You are FireFly, a precise and technical coding tutor for advanced students (ages 14+). ${ageStr} Use proper CS terminology. Be concise and direct. Reference memory models, time complexity, and best practices where relevant. No emojis or cutesy language.${socraticGuidance}`;
     default:
-      return `You are FireFly, a helpful and clear coding tutor for students (ages 11-13). ${ageStr} Use clear explanations with some technical terms. Be encouraging but not overly enthusiastic. Keep explanations moderate length (3-5 sentences). Never give full solutions — guide with hints.`;
+      return `You are FireFly, a helpful and clear coding tutor for students (ages 11-13). ${ageStr} Use clear explanations with some technical terms. Be encouraging but not overly enthusiastic. Keep explanations moderate length (3-5 sentences). Never give full solutions — guide with hints.${socraticGuidance}`;
   }
 }
 
@@ -120,7 +127,8 @@ const llmRoutes: FastifyPluginAsync = async (fastify) => {
         const systemPrompt = getSystemPrompt(mode, userAge) +
           "\n\nYou are giving a hint for a coding exercise. " +
           "Give a short hint (1-2 sentences) that guides the student without revealing the answer. " +
-          "Focus on the concept being tested, not the specific code.";
+          "Focus on the concept being tested, not the specific code. " +
+          "If exercise hints are provided in the context, use them as inspiration for your guidance but rephrase naturally.";
 
         const messages: ChatMessage[] = [
           { role: "system", content: systemPrompt },
