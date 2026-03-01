@@ -1,18 +1,37 @@
 import { motion } from "framer-motion";
 import { CheckCircle2, Circle, Clock } from "lucide-react";
 
-interface ProgressItem { conceptId: string; concept: string; masteryScore: number; status: string; }
-interface MasteryMapProps { progress: ProgressItem[]; }
+interface ProgressItem {
+  conceptId: string;
+  concept: string;
+  masteryScore: number;
+  status: string;
+}
+
+interface MasteryMapProps {
+  progress: ProgressItem[];
+}
 
 const STATUS_CONFIG = {
-  mastered: { color: "from-emerald-500 to-teal-500", text: "text-emerald-300", icon: CheckCircle2, border: "border-emerald-500/40" },
-  in_progress: { color: "from-violet-500 to-fuchsia-600", text: "text-violet-300", icon: Clock, border: "border-violet-500/40" },
-  not_started: { color: "from-slate-700 to-slate-800", text: "text-slate-600", icon: Circle, border: "border-white/8" },
+  mastered: { color: "from-emerald-500 to-teal-500", text: "text-emerald-400", icon: CheckCircle2, border: "border-emerald-500/40" },
+  in_progress: { color: "from-violet-500 to-fuchsia-600", text: "text-violet-400", icon: Clock, border: "border-violet-500/40" },
+  not_started: { color: "from-muted to-muted", text: "text-muted-foreground", icon: Circle, border: "border-border" },
 };
 
 export default function MasteryMap({ progress }: MasteryMapProps) {
+  if (progress.length === 0) {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-6">
+        <h2 className="font-bold text-lg mb-5">Mastery Map</h2>
+        <p className="text-muted-foreground text-sm">
+          No concepts found yet. Complete some exercises to see your mastery progress!
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="rounded-2xl border border-white/8 bg-white/3 p-6">
+    <div className="rounded-2xl border border-border bg-card p-6">
       <h2 className="font-bold text-lg mb-5">Mastery Map</h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {progress.map((p: ProgressItem, i: number) => {
@@ -24,16 +43,16 @@ export default function MasteryMap({ progress }: MasteryMapProps) {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.06 }}
-              className={`rounded-xl border ${sc.border} bg-white/3 p-4 relative overflow-hidden`}
+              className={`rounded-xl border ${sc.border} bg-card p-4 relative overflow-hidden`}
             >
               <div className={`absolute inset-0 bg-gradient-to-br ${sc.color} opacity-5`} />
               <div className="relative">
                 <div className="flex items-center justify-between mb-2">
                   <Icon className={`w-4 h-4 ${sc.text}`} />
-                  <span className="text-xs font-bold text-white">{p.masteryScore ?? 0}%</span>
+                  <span className="text-xs font-bold">{p.masteryScore ?? 0}%</span>
                 </div>
-                <div className="text-sm font-semibold mb-2 text-slate-200">{p.concept}</div>
-                <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                <div className="text-sm font-semibold mb-2">{p.concept}</div>
+                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${p.masteryScore ?? 0}%` }}

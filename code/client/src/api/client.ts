@@ -269,22 +269,49 @@ export const execution = {
 
 // ─── Progress & Mastery API ──────────────────────────────────────
 
+export interface MasteryConcept {
+  conceptId: string;
+  conceptName: string;
+  sortOrder: number;
+  prerequisites: string[];
+  score: number;
+  attempts: number;
+  lastAttemptAt: string | null;
+  mastered: boolean;
+}
+
+export interface MasteryMapResponse {
+  userId: string;
+  masteryThreshold: number;
+  concepts: MasteryConcept[];
+}
+
+export interface MasteryUpdateResponse {
+  conceptId: string;
+  previousScore: number;
+  newScore: number;
+  delta: number;
+  attempts: number;
+  mastered: boolean;
+  justMastered: boolean;
+  newlyUnlocked: string[];
+  masteryThreshold: number;
+}
+
 export const progress = {
   /** Get mastery map for user */
-  masteryMap: async (userId?: string): Promise<unknown[]> => {
-    const path = userId ? `/progress/${userId}` : "/progress/me";
-    const envelope = await request<unknown[]>(path);
-    return envelope.data ?? [];
+  masteryMap: async (userId: string): Promise<MasteryMapResponse | null> => {
+    const envelope = await request<MasteryMapResponse>(`/progress/${userId}`);
+    return envelope.data ?? null;
   },
 
-  /** Submit exercise attempt */
-  submit: async (data: {
-    exerciseId: string;
-    code: string;
-    passed: boolean;
-    traceId?: string;
-  }): Promise<Record<string, unknown> | null> => {
-    const envelope = await request<Record<string, unknown>>("/progress/submit", {
+  /** Submit exercise attempt (BKT update) */
+  submit: async (userId: string, data: {
+    conceptId: string;
+    correct: boolean;
+    exerciseId?: string;
+  }): Promise<MasteryUpdateResponse | null> => {
+    const envelope = await request<MasteryUpdateResponse>(`/progress/${userId}/update`, {
       method: "POST",
       body: JSON.stringify(data),
     });

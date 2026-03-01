@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import Editor from "@monaco-editor/react";
-import { client, execution } from "@/api/client";
+import { client, execution, progress, MasteryUpdateResponse } from "@/api/client";
 import { Link, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { ChevronLeft, Play, Lightbulb, CheckCircle2, XCircle, Loader2, Eye, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/lib/ThemeContext";
+import { useAuth } from "@/lib/AuthContext";
 
 interface Exercise {
   id: string;
@@ -170,6 +171,7 @@ function ExerciseList({ conceptId }: { conceptId: string | null }) {
 
 function SingleExercise({ exerciseId }: { exerciseId: string }) {
   const { isPro } = useTheme();
+  const { user } = useAuth();
   const [exercise, setExercise] = useState<Exercise | null>(null);
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(true);
@@ -185,6 +187,7 @@ function SingleExercise({ exerciseId }: { exerciseId: string }) {
   const [loadingAiHint, setLoadingAiHint] = useState(false);
   const [aiHint, setAiHint] = useState<string | null>(null);
   const [testCases, setTestCases] = useState<TestCase[]>([]);
+  const [masteryFeedback, setMasteryFeedback] = useState<MasteryUpdateResponse | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -215,6 +218,7 @@ function SingleExercise({ exerciseId }: { exerciseId: string }) {
     if (!exercise) return;
     setSubmitting(true);
     setResults(null);
+    setMasteryFeedback(null);
     try {
       const result = await execution.run({
         language: exercise.language,
@@ -223,12 +227,30 @@ function SingleExercise({ exerciseId }: { exerciseId: string }) {
       }) as { jobId: string; status: string; stdout: string | null; stderr: string | null; trace: unknown } | null;
 
       if (result) {
+        const passed = result.status === "completed";
         setResults({
-          status: result.status === "completed" ? "passed" : "failed",
+          status: passed ? "passed" : "failed",
           stdout: result.stdout,
           stderr: result.stderr,
           jobId: result.jobId,
         });
+
+        // Submit mastery update if we have a concept and a logged-in user
+        const conceptId = exercise.lessons?.[0]?.lesson?.concept?.id;
+        if (conceptId && user?.id) {
+          try {
+            const masteryResult = await progress.submit(user.id, {
+              conceptId,
+              correct: passed,
+              exerciseId: exercise.id,
+            });
+            if (masteryResult) {
+              setMasteryFeedback(masteryResult);
+            }
+          } catch (err) {
+            console.error("Failed to submit mastery update:", err);
+          }
+        }
       }
     } catch (err) {
       setResults({
@@ -461,6 +483,64 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
                       <Eye className="w-3.5 h-3.5" />
                       View execution trace in Visualizer
                     </Link>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Mastery feedback */}
+          <AnimatePresence>
+            {masteryFeedback && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="border-t border-border overflow-hidden"
+              >
+                <div className="p-4 space-y-2">
+                  {/* Score delta */}
+                  <div className="flex items-center gap-3">
+                    <div className={`text-sm font-semibold ${masteryFeedback.delta >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                      Mastery: {Math.round(masteryFeedback.newScore * 100)}%
+                      <span className="ml-2 text-xs">
+                        ({masteryFeedback.delta >= 0 ? "+" : ""}{Math.round(masteryFeedback.delta * 100)}%)
+                      </span>
+                    </div>
+                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-violet-500 rounded-full"
+                        initial={{ width: `${Math.round(masteryFeedback.previousScore * 100)}%` }}
+                        animate={{ width: `${Math.round(masteryFeedback.newScore * 100)}%` }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Just mastered celebration */}
+                  {masteryFeedback.justMastered && (
+                    <motion.div
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20"
+                    >
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                      <span className="text-sm font-semibold text-emerald-400">
+                        {isPro ? "Concept mastered." : "You mastered this concept! \uD83C\uDF1F"}
+                      </span>
+                    </motion.div>
+                  )}
+
+                  {/* Newly unlocked concepts */}
+                  {masteryFeedback.newlyUnlocked.length > 0 && (
+                    <div className="flex items-center gap-2 text-sm text-violet-400">
+                      <span>{isPro ? "Unlocked:" : "\uD83D\uDD13 New concepts unlocked:"}</span>
+                      {masteryFeedback.newlyUnlocked.map((name) => (
+                        <span key={name} className="px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-xs font-medium">
+                          {name}
+                        </span>
+                      ))}
+                    </div>
                   )}
                 </div>
               </motion.div>

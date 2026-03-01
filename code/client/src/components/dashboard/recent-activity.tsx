@@ -17,19 +17,19 @@ const ICONS = {
 
 export default function RecentActivity() {
   return (
-    <div className="rounded-2xl border border-white/8 bg-white/3 p-6">
+    <div className="rounded-2xl border border-border bg-card p-6">
       <h2 className="font-bold text-lg mb-4">Recent Activity</h2>
       <div className="space-y-2">
         {MOCK_ACTIVITY.map((act, i) => {
           const cfg = ICONS[act.type as keyof typeof ICONS];
           return (
-            <div key={i} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/3 transition-colors">
+            <div key={i} className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors">
               <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${cfg.bg}`}>
                 <cfg.Icon className={`w-4 h-4 ${cfg.color}`} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">{act.title}</div>
-                <div className="text-xs text-slate-600">{act.concept ? `${act.concept} · ` : ""}{act.time}</div>
+                <div className="text-xs text-muted-foreground">{act.concept ? `${act.concept} · ` : ""}{act.time}</div>
               </div>
               {act.xp > 0 && (
                 <div className="text-xs font-bold text-amber-400 shrink-0">+{act.xp} XP</div>
