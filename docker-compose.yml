@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: firefly-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-firefly}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-firefly_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-firefly}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-firefly} -d ${POSTGRES_DB:-firefly}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - firefly
+
+  redis:
+    image: redis:7-alpine
+    container_name: firefly-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - firefly
+
+  judge0:
+    image: judge0/judge0-ce:1.13.1
+    container_name: firefly-judge0
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: judge0
+      POSTGRES_USER: ${POSTGRES_USER:-firefly}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-firefly_dev}
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "2358:2358"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - firefly
+
+  judge0-workers:
+    image: judge0/judge0-ce:1.13.1
+    container_name: firefly-judge0-workers
+    command: ./scripts/workers
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: judge0
+      POSTGRES_USER: ${POSTGRES_USER:-firefly}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-firefly_dev}
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - judge0
+    networks:
+      - firefly
+
+  oidc:
+    image: docker.io/plainscope/simple-oidc-provider
+    container_name: firefly-oidc
+    environment:
+      OIDC_PRESET: local
+      ISSUER: http://localhost:8080
+      CLIENT_ID: firefly
+      CLIENT_SECRET: firefly-secret
+      REDIRECT_URIS: http://localhost:5173/auth/callback
+    ports:
+      - "8080:8080"
+    networks:
+      - firefly
+
+volumes:
+  pgdata:
+
+networks:
+  firefly:
+    driver: bridge

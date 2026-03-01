@@ -1,0 +1,12 @@
+{
+    "tasks": [
+        {
+            "label": "docker: build",
+            "command": "docker",
+            "args": [
+                "compose",
+                "build"
+            ]
+        }
+    ]
+}

@@ -1,0 +1,27 @@
+{
+  "name": "firefly-server",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint src/ --ext .ts"
+  },
+  "dependencies": {
+    "fastify": "^5.2.1",
+    "fastify-plugin": "^5.0.1",
+    "@fastify/cors": "^11.0.0",
+    "@fastify/cookie": "^11.0.2",
+    "zod": "^3.24.2",
+    "uuid": "^11.1.0",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2",
+    "tsx": "^4.19.3",
+    "@types/node": "^22.13.5",
+    "@types/uuid": "^10.0.0"
+  }
+}
