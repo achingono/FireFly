@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { client, execution, ai } from "@/api/client";
+import { client, execution, ai, progress } from "@/api/client";
 import { useAuth } from "@/lib/AuthContext";
 import { useTheme } from "@/lib/ThemeContext";
 import CodePane from "@/components/visualizer/code-pane";
@@ -249,6 +249,7 @@ export default function Visualizer() {
   const [exerciseTitle, setExerciseTitle] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
+  const [activeExerciseId, setActiveExerciseId] = useState<string | null>(exerciseIdParam);
 
   const ageProfile = ageProfileToRange(user?.ageProfile);
 
@@ -262,20 +263,116 @@ export default function Visualizer() {
       loadExercise(exerciseIdParam);
     } else if (jobIdParam) {
       loadJob(jobIdParam);
+    } else {
+      resolveExerciseForVisualizer();
     }
-  }, [exerciseIdParam, jobIdParam]);
+  }, [exerciseIdParam, jobIdParam, user?.id]);
 
-  async function loadExercise(id: string) {
-    setInitialLoading(true);
+  async function loadExercise(id: string, options?: { manageLoading?: boolean }) {
+    const manageLoading = options?.manageLoading ?? true;
+    if (manageLoading) {
+      setInitialLoading(true);
+    }
     try {
       const ex = await client.entities.exercises.get(id) as Record<string, unknown> | null;
       if (ex) {
         setCode((ex.starterCode as string) || "");
         setLanguage((ex.language as string) || "python");
         setExerciseTitle((ex.title as string) || null);
+        setActiveExerciseId(id);
       }
     } catch (err) {
       console.error("Failed to load exercise:", err);
+    } finally {
+      if (manageLoading) {
+        setInitialLoading(false);
+      }
+    }
+  }
+
+  async function resolveExerciseForVisualizer() {
+    setInitialLoading(true);
+    try {
+      const conceptIdsToTry: string[] = [];
+      const inProgressConceptIds: string[] = [];
+
+      if (user?.id) {
+        const mastery = await progress.masteryMap(user.id);
+        const concepts = mastery?.concepts ?? [];
+        const masteredConceptIds = new Set(
+          concepts
+            .filter((concept) => concept.mastered)
+            .map((concept) => concept.conceptId)
+        );
+
+        const unlockedNotMastered = concepts
+          .filter((concept) => {
+            if (concept.mastered) {
+              return false;
+            }
+            return concept.prerequisites.every((prerequisiteId) => masteredConceptIds.has(prerequisiteId));
+          })
+          .sort((a, b) => a.sortOrder - b.sortOrder);
+
+        const inProgressConcept = unlockedNotMastered.find((concept) => concept.attempts > 0);
+        if (inProgressConcept) {
+          conceptIdsToTry.push(inProgressConcept.conceptId);
+        }
+
+        const allInProgress = unlockedNotMastered
+          .filter((concept) => concept.attempts > 0)
+          .sort((a, b) => {
+            const aTime = a.lastAttemptAt ? Date.parse(a.lastAttemptAt) : 0;
+            const bTime = b.lastAttemptAt ? Date.parse(b.lastAttemptAt) : 0;
+            return bTime - aTime;
+          });
+
+        for (const concept of allInProgress) {
+          if (!inProgressConceptIds.includes(concept.conceptId)) {
+            inProgressConceptIds.push(concept.conceptId);
+          }
+        }
+
+        for (const concept of unlockedNotMastered) {
+          if (!conceptIdsToTry.includes(concept.conceptId)) {
+            conceptIdsToTry.push(concept.conceptId);
+          }
+        }
+      }
+
+      if (user?.id) {
+        for (const conceptId of inProgressConceptIds) {
+          const conceptProgress = await progress.concept(user.id, conceptId);
+          const latestWithExercise = [...(conceptProgress?.history ?? [])]
+            .reverse()
+            .find((item) => typeof item.exerciseId === "string" && item.exerciseId.length > 0);
+
+          if (latestWithExercise?.exerciseId) {
+            const exercise = await client.entities.exercises.get(latestWithExercise.exerciseId) as Record<string, unknown> | null;
+            if (exercise?.id) {
+              await loadExercise(latestWithExercise.exerciseId, { manageLoading: false });
+              return;
+            }
+          }
+        }
+      }
+
+      for (const conceptId of conceptIdsToTry) {
+        const conceptExercises = await client.entities.exercises.list({ conceptId }) as Array<Record<string, unknown>>;
+        const firstExerciseId = conceptExercises[0]?.id as string | undefined;
+        if (firstExerciseId) {
+          await loadExercise(firstExerciseId, { manageLoading: false });
+          return;
+        }
+      }
+
+      const allExercises = await client.entities.exercises.list() as Array<Record<string, unknown>>;
+      const firstExerciseId = allExercises[0]?.id as string | undefined;
+      if (firstExerciseId) {
+        await loadExercise(firstExerciseId, { manageLoading: false });
+      }
+    } catch (err) {
+      console.error("Failed to resolve exercise for visualizer:", err);
     } finally {
       setInitialLoading(false);
     }
@@ -324,7 +421,7 @@ export default function Visualizer() {
       const result = await execution.run({
         language,
         sourceCode: code,
-        exerciseId: exerciseIdParam ?? undefined,
+        exerciseId: activeExerciseId ?? undefined,
       }) as {
         jobId: string;
         status: string;
@@ -352,7 +449,7 @@ export default function Visualizer() {
     } finally {
       setIsRunning(false);
     }
-  }, [code, language, exerciseIdParam]);
+  }, [code, language, activeExerciseId]);
 
   // ─── Reset ─────────────────────────────────────────────────────
 
@@ -390,14 +487,14 @@ export default function Visualizer() {
   const handleLanguageChange = useCallback(
     (lang: string) => {
       setLanguage(lang);
-      if (!exerciseIdParam && !jobIdParam) {
+      if (!activeExerciseId && !jobIdParam) {
         setCode(STARTER_PROGRAMS[lang] ?? "");
       }
       setTrace(null);
       setCurrentStep(0);
       setRunError(null);
     },
-    [exerciseIdParam, jobIdParam]
+    [activeExerciseId, jobIdParam]
   );
 
   // ─── Loading state ─────────────────────────────────────────────
@@ -426,7 +523,7 @@ export default function Visualizer() {
       {/* Top bar */}
       <div className="flex items-center gap-4 px-4 py-3 border-b border-border bg-muted">
         <Link
-          to={exerciseIdParam ? createPageUrl(`Exercise?id=${exerciseIdParam}`) : createPageUrl("Curriculum")}
+          to={activeExerciseId ? createPageUrl(`Exercise?id=${activeExerciseId}`) : createPageUrl("Curriculum")}
           className="text-muted-foreground hover:text-foreground transition-colors"
         >
           <ChevronLeft className="w-5 h-5" />
@@ -437,7 +534,7 @@ export default function Visualizer() {
         </div>
         <div className="ml-auto flex items-center gap-3">
           {/* Language (only changeable in sandbox mode) */}
-          {!exerciseIdParam && !jobIdParam && (
+          {!activeExerciseId && !jobIdParam && (
             <select
               value={language}
               onChange={(e) => handleLanguageChange(e.target.value)}
@@ -448,7 +545,7 @@ export default function Visualizer() {
             </select>
           )}
           {/* Language badge for exercise/job mode */}
-          {(exerciseIdParam || jobIdParam) && (
+          {(activeExerciseId || jobIdParam) && (
             <span className="px-3 py-1.5 rounded-lg bg-muted border border-border text-sm text-muted-foreground">
               {language}
             </span>

@@ -26,7 +26,7 @@ On each attempt (correct or incorrect):
 2. **Apply learning transition**:
    - `pL_next = posterior + (1 - posterior) * pT`
 
-3. **Clamp** to range `[0.01, 0.99]` to avoid extreme values
+3. **Clamp** to range `[0, 1]`
 
 4. **Check mastery**: If `pL_next >= 0.80` and the previous score was below threshold → concept is "just mastered"
 
@@ -36,7 +36,7 @@ On each attempt (correct or incorrect):
 
 ### `GET /api/v1/progress/:userId`
 
-Get the full mastery map for a user — all concepts with their current mastery scores.
+Get the full mastery map for a user — all concepts with their current mastery scores and unlock metadata.
 
 **Authentication**: Required
 
@@ -54,29 +54,27 @@ Get the full mastery map for a user — all concepts with their current mastery 
   "requestId": "uuid",
   "data": {
     "userId": "uuid",
+    "masteryThreshold": 0.8,
     "concepts": [
       {
         "conceptId": "uuid",
         "conceptName": "Variables",
+        "sortOrder": 1,
+        "prerequisites": [],
         "score": 0.85,
-        "mastered": true,
-        "history": [
-          {
-            "date": "2025-01-15T10:30:00.000Z",
-            "correct": true,
-            "scoreBefore": 0.65,
-            "scoreAfter": 0.85,
-            "delta": 0.20,
-            "exerciseId": "uuid"
-          }
-        ]
+        "attempts": 6,
+        "lastAttemptAt": "2025-01-15T10:30:00.000Z",
+        "mastered": true
       },
       {
         "conceptId": "uuid",
         "conceptName": "Data Types",
-        "score": 0.10,
-        "mastered": false,
-        "history": []
+        "sortOrder": 2,
+        "prerequisites": ["uuid"],
+        "score": 0,
+        "attempts": 0,
+        "lastAttemptAt": null,
+        "mastered": false
       }
     ]
   },
@@ -86,7 +84,7 @@ Get the full mastery map for a user — all concepts with their current mastery 
 
 **Notes**:
 - Returns entries for ALL concepts, not just those the user has attempted
-- Concepts without a `MasteryRecord` return `score: 0.10` (pL0 default) and empty history
+- Concepts without a `MasteryRecord` return `score: 0`, `attempts: 0`, and `lastAttemptAt: null`
 - `mastered` is `true` when `score >= 0.80`
 
 ---
@@ -115,7 +113,7 @@ Submit an exercise attempt and update the BKT mastery score.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `conceptId` | `string` | Yes | Concept being practiced |
-| `exerciseId` | `string` | Yes | Exercise attempted |
+| `exerciseId` | `string` | No | Exercise attempted (recommended so history can link to specific exercises) |
 | `correct` | `boolean` | Yes | Whether the attempt was correct |
 
 **Response**:
@@ -126,12 +124,14 @@ Submit an exercise attempt and update the BKT mastery score.
   "requestId": "uuid",
   "data": {
     "conceptId": "uuid",
-    "scoreBefore": 0.35,
-    "scoreAfter": 0.52,
+    "previousScore": 0.35,
+    "newScore": 0.52,
     "delta": 0.17,
+    "attempts": 4,
     "mastered": false,
     "justMastered": false,
-    "newlyUnlocked": []
+    "newlyUnlocked": [],
+    "masteryThreshold": 0.8
   },
   "meta": { "schemaVersion": "1.0" }
 }
@@ -142,12 +142,14 @@ Submit an exercise attempt and update the BKT mastery score.
 | Field | Type | Description |
 |-------|------|-------------|
 | `conceptId` | `string` | The concept that was updated |
-| `scoreBefore` | `number` | Mastery score before this attempt |
-| `scoreAfter` | `number` | Mastery score after BKT update |
-| `delta` | `number` | Score change (`scoreAfter - scoreBefore`) |
+| `previousScore` | `number` | Mastery score before this attempt |
+| `newScore` | `number` | Mastery score after BKT update |
+| `delta` | `number` | Score change (`newScore - previousScore`) |
+| `attempts` | `number` | Total attempts recorded for this concept |
 | `mastered` | `boolean` | Whether the concept is now mastered (≥0.80) |
 | `justMastered` | `boolean` | Whether this attempt caused the concept to cross the mastery threshold |
-| `newlyUnlocked` | `array` | Concept IDs that became available because all their prerequisites are now mastered |
+| `newlyUnlocked` | `array` | Concept names that became available because all their prerequisites are now mastered |
+| `masteryThreshold` | `number` | Current mastery threshold (0.8) |
 
 **Flow**:
 1. Finds or creates a `MasteryRecord` for the user + concept pair
@@ -171,7 +173,7 @@ Submit an exercise attempt and update the BKT mastery score.
 
 ### `GET /api/v1/progress/:userId/concept/:conceptId`
 
-Get detailed mastery information for a single concept.
+Get detailed mastery information for a single concept, including full attempt history.
 
 **Authentication**: Required
 
@@ -217,11 +219,15 @@ Get detailed mastery information for a single concept.
 }
 ```
 
+**Notes**:
+- If the concept exists but the user has no `MasteryRecord` yet, this endpoint returns a default record (`score: 0`, `attempts: 0`, `history: []`) instead of `404`.
+- `history[].exerciseId` is used by the client Visualizer resume flow to open the most recent exercise the student worked on in that concept.
+
 **Error Responses**:
 
 | Code | Type | Condition |
 |------|------|-----------|
-| 404 | `NotFoundError` | Concept or mastery record not found |
+| 404 | `NotFoundError` | Concept not found |
 
 ## Mastery Progression Example
 

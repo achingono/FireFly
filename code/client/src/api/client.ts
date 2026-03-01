@@ -350,6 +350,25 @@ export interface MasteryUpdateResponse {
   masteryThreshold: number;
 }
 
+export interface MasteryConceptDetailHistoryItem {
+  date: string;
+  correct: boolean;
+  scoreBefore: number;
+  scoreAfter: number;
+  delta: number;
+  exerciseId: string | null;
+}
+
+export interface MasteryConceptDetailResponse {
+  conceptId: string;
+  conceptName: string;
+  score: number;
+  attempts: number;
+  lastAttemptAt: string | null;
+  mastered: boolean;
+  history: MasteryConceptDetailHistoryItem[];
+}
+
 export const progress = {
   /** Get mastery map for user */
   masteryMap: async (userId: string): Promise<MasteryMapResponse | null> => {
@@ -367,6 +386,12 @@ export const progress = {
       method: "POST",
       body: JSON.stringify(data),
     });
+    return envelope.data ?? null;
+  },
+
+  /** Get detailed mastery for a single concept */
+  concept: async (userId: string, conceptId: string): Promise<MasteryConceptDetailResponse | null> => {
+    const envelope = await request<MasteryConceptDetailResponse>(`/progress/${userId}/concept/${conceptId}`);
     return envelope.data ?? null;
   },
 };
