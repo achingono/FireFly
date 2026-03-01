@@ -9,6 +9,57 @@ This guide walks you through setting up the FireFly development environment and 
 - **Git**
 - **LM Studio** (optional, for AI features)
 
+## macOS: Enable cgroups v1 for Judge0
+
+Judge0 uses `isolate` to sandbox code execution, which requires **cgroups v1**. Docker Desktop on macOS defaults to cgroups v2, which causes Judge0 workers to fail with `Status 13: Internal Error`.
+
+> **This step is required on macOS.** Linux hosts using cgroups v1 natively can skip this section.
+
+### Steps
+
+1. **Quit Docker Desktop** completely (not just close the window).
+
+2. **Edit `settings.json`** to enable the cgroups v1 compatibility flag:
+
+   ```bash
+   # Open the Docker Desktop settings file
+   nano ~/Library/Group\ Containers/group.com.docker/settings.json
+   ```
+
+   Add `"DeprecatedCgroupv1": true` to the JSON object. If the file doesn't exist, create it:
+
+   ```json
+   {
+     "DeprecatedCgroupv1": true
+   }
+   ```
+
+   If the file already exists with other settings, add the key alongside them.
+
+3. **Delete `settings-store.json`** so Docker Desktop regenerates it from `settings.json`:
+
+   ```bash
+   rm ~/Library/Group\ Containers/group.com.docker/settings-store.json
+   ```
+
+   > **Important**: Editing `settings-store.json` directly does NOT work — Docker Desktop overwrites it on startup. You must edit `settings.json` and delete `settings-store.json`.
+
+4. **Start Docker Desktop.**
+
+5. **Verify cgroups v1 is active:**
+
+   ```bash
+   docker info | grep "Cgroup Version"
+   # Expected output: Cgroup Version: 1
+   ```
+
+   If it still shows `2`, ensure Docker Desktop fully restarted and that `settings-store.json` was deleted before starting.
+
+### References
+
+- [Judge0 issue #552](https://github.com/judge0/judge0/issues/552) — macOS Apple Silicon setup
+- [Docker for Mac issue #7797](https://github.com/docker/for-mac/issues/7797) — cgroups v2 compatibility
+
 ## Quick Start with Docker Compose
 
 The fastest way to run the full platform:

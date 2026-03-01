@@ -49,6 +49,7 @@ services:
       retries: 5
     networks:
       - firefly
+      - judge0-sandbox
 
   redis:
     image: redis:7-alpine
@@ -60,17 +61,36 @@ services:
       retries: 5
     networks:
       - firefly
+      - judge0-sandbox
 
   judge0:
     image: judge0/judge0:1.13.1
     container_name: firefly-judge0
+    privileged: true
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 50M
+        max-file: "2"
+    tmpfs:
+      - /box:exec,size=512M
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: judge0
       POSTGRES_USER: ${POSTGRES_USER:-firefly}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-firefly_dev}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       REDIS_URL: redis://redis:6379
+      # Security: disable network access for sandboxed code
+      ENABLE_NETWORK: "false"
+      ALLOW_ENABLE_NETWORK: "false"
+      # Security: restrict compiler options and command line args
+      ENABLE_COMPILER_OPTIONS: "false"
+      ENABLE_COMMAND_LINE_ARGUMENTS: "false"
+      ENABLE_ADDITIONAL_FILES: "false"
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,22 +98,41 @@ services:
         condition: service_healthy
     networks:
       - firefly
+      - judge0-sandbox
 
   judge0-workers:
     image: judge0/judge0:1.13.1
     container_name: firefly-judge0-workers
     command: ./scripts/workers
+    privileged: true
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 50M
+        max-file: "2"
+    tmpfs:
+      - /box:exec,size=512M
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: judge0
       POSTGRES_USER: ${POSTGRES_USER:-firefly}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-firefly_dev}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       REDIS_URL: redis://redis:6379
+      # Security: disable network access for sandboxed code
+      ENABLE_NETWORK: "false"
+      ALLOW_ENABLE_NETWORK: "false"
+      # Security: restrict compiler options and command line args
+      ENABLE_COMPILER_OPTIONS: "false"
+      ENABLE_COMMAND_LINE_ARGUMENTS: "false"
+      ENABLE_ADDITIONAL_FILES: "false"
     depends_on:
       - judge0
     networks:
-      - firefly
+      - judge0-sandbox
 
   oidc:
     image: ghcr.io/plainscope/simple-oidc-provider
@@ -187,3 +226,6 @@ volumes:
 networks:
   firefly:
     driver: bridge
+  judge0-sandbox:
+    driver: bridge
+    internal: true

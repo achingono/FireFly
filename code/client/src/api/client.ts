@@ -284,8 +284,22 @@ export const execution = {
     sourceCode: string;
     stdin?: string;
     exerciseId?: string;
-  }): Promise<{ jobId: string } | null> => {
-    const envelope = await request<{ jobId: string }>("/execution/run", {
+  }): Promise<{
+    jobId: string;
+    status: string;
+    stdout: string | null;
+    stderr: string | null;
+    trace: unknown | null;
+    durationMs: number | null;
+  } | null> => {
+    const envelope = await request<{
+      jobId: string;
+      status: string;
+      stdout: string | null;
+      stderr: string | null;
+      trace: unknown | null;
+      durationMs: number | null;
+    }>("/execution/run", {
       method: "POST",
       body: JSON.stringify(data),
     });

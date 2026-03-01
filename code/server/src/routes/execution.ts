@@ -88,13 +88,9 @@ print("---TRACE_END---")
 `;
 
 function wrapWithTracer(userCode: string): string {
-  // Escape the user code as a string literal for the tracer
-  const escaped = userCode.replace(/\\/g, "\\\\").replace(/"""/g, '\\"\\"\\"');
-  const wrapped = PYTHON_TRACER.replace(
-    "_USER_CODE_",
-    `"""${escaped}"""`
-  );
-  return wrapped;
+  // For now, return the code as-is to test if Judge0/Python itself is working
+  // TODO: Implement proper tracer wrapping
+  return userCode;
 }
 
 // Judge0 language IDs
@@ -244,6 +240,11 @@ const executionRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       try {
+        // Log the wrapped code for debugging
+        if (language === "python") {
+          fastify.log.debug(`Wrapped Python code length: ${finalSource.length}, original: ${sourceCode.length}`);
+        }
+        
         // Submit to Judge0
         const token = await submitToJudge0({
           source_code: finalSource,
@@ -262,11 +263,29 @@ const executionRoutes: FastifyPluginAsync = async (fastify) => {
 
         // Poll for result
         const result = await pollJudge0(token);
+        
+        // Log full Judge0 response for debugging
+        fastify.log.info(`Judge0 result: status.id=${result.status.id} (${result.status.description}), exit=${result.exit_code}, stdout_len=${result.stdout?.length ?? 0}, stderr_len=${result.stderr?.length ?? 0}, compile_len=${result.compile_output?.length ?? 0}`);
+        if (result.stdout) fastify.log.debug(`Judge0 stdout: ${result.stdout.substring(0, 500)}`);
+        if (result.stderr) fastify.log.debug(`Judge0 stderr: ${result.stderr.substring(0, 500)}`);
+        if (result.compile_output) fastify.log.debug(`Judge0 compile_output: ${result.compile_output.substring(0, 500)}`);
 
         // Determine status
         let status: "completed" | "failed" | "timeout" = "completed";
-        if (result.status.id === 5) status = "timeout"; // Time Limit Exceeded
-        else if (result.status.id !== 3) status = "failed"; // 3 = Accepted
+        let statusMessage = "";
+        if (result.status.id === 5) {
+          status = "timeout";
+          statusMessage = "Time Limit Exceeded";
+        } else if (result.status.id === 6) {
+          status = "failed";
+          statusMessage = `Compilation Error: ${result.compile_output || "No details"}`;
+        } else if (result.status.id === 7) {
+          status = "failed";
+          statusMessage = `Runtime Error: ${result.stderr || "No stderr captured"}`;
+        } else if (result.status.id !== 3) {
+          status = "failed";
+          statusMessage = `Judge0 Status ${result.status.id}: ${result.status.description}`;
+        }
 
         // Parse trace from stdout (Python only)
         let trace = null;
@@ -288,7 +307,7 @@ const executionRoutes: FastifyPluginAsync = async (fastify) => {
           data: {
             status,
             stdout: userStdout,
-            stderr: userStderr ?? result.compile_output,
+            stderr: userStderr ?? result.compile_output ?? (statusMessage || null),
             exitCode: result.exit_code,
             trace: trace ? JSON.parse(JSON.stringify(trace)) : null,
             durationMs: result.time ? Math.round(parseFloat(result.time) * 1000) : null,
@@ -300,7 +319,7 @@ const executionRoutes: FastifyPluginAsync = async (fastify) => {
           jobId: job.id,
           status,
           stdout: userStdout,
-          stderr: userStderr ?? result.compile_output,
+          stderr: userStderr ?? result.compile_output ?? (statusMessage || "Execution failed"),
           trace,
           durationMs: result.time ? Math.round(parseFloat(result.time) * 1000) : null,
         });
