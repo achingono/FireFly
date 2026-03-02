@@ -53,7 +53,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ steps.repo-owner.outputs.owner_lc }}/firefly-${{ matrix.image }}
+          images: ghcr.io/${{ steps.repo-owner.outputs.owner_lc }}/firefly/${{ matrix.image }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -112,8 +112,8 @@ jobs:
             ## 🎉 FireFly Release ${{ steps.version.outputs.version }}
             
             ### 📦 Docker Images
-            - `ghcr.io/${{ github.repository_owner }}/firefly-client:${{ steps.version.outputs.version }}`
-            - `ghcr.io/${{ github.repository_owner }}/firefly-server:${{ steps.version.outputs.version }}`
+            - `ghcr.io/${{ github.repository_owner }}/firefly/client:${{ steps.version.outputs.version }}`
+            - `ghcr.io/${{ github.repository_owner }}/firefly/server:${{ steps.version.outputs.version }}`
             
             ### 🚀 Deployment
             Update your deployment to use the new image versions.
