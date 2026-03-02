@@ -22,6 +22,9 @@ RUN npx prisma generate
 # Compile TypeScript
 RUN npx tsc
 
+# Copy tracer files (not compiled, just copied as-is)
+RUN cp -r src/tracers dist/
+
 # ── Stage 3: Production image ──
 FROM node:20-alpine AS runner
 WORKDIR /app

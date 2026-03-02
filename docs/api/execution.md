@@ -44,11 +44,10 @@ Submit code for execution with trace generation.
   "code": 200,
   "requestId": "uuid",
   "data": {
-    "id": "job-uuid",
+    "jobId": "job-uuid",
     "status": "completed",
     "stdout": "15\n",
     "stderr": null,
-    "exitCode": 0,
     "trace": [
       {
         "step": 0,
@@ -86,21 +85,61 @@ Submit code for execution with trace generation.
         "stdout": "",
         "stderr": ""
       }
+    ],
+    "durationMs": 125,
+    "testResults": [
+      {
+        "input": "add(2, 3)",
+        "expectedOutput": "5",
+        "actualOutput": "5",
+        "passed": true
+      },
+      {
+        "input": "add(-1, 1)",
+        "expectedOutput": "0",
+        "actualOutput": "0",
+        "passed": true
+      }
     ]
   },
   "meta": { "schemaVersion": "1.0" }
 }
 ```
 
+**Response Fields**:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `jobId` | `string` | Execution job UUID |
+| `status` | `string` | `completed`, `failed`, or `timeout` |
+| `stdout` | `string` | Standard output from user code |
+| `stderr` | `string` | Standard error output |
+| `trace` | `array` | Execution trace frames (Python/JavaScript only) |
+| `durationMs` | `number` | Execution time in milliseconds |
+| `testResults` | `array` | Test case results (only if `exerciseId` provided) |
+
+**Test Results** (returned when `exerciseId` is provided):
+
+Each test result contains:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `input` | `string` | Test case input/expression |
+| `expectedOutput` | `string` | Expected output |
+| `actualOutput` | `string` | Actual output from user code |
+| `passed` | `boolean` | Whether the test passed |
+| `error` | `string` | Error message (if test failed) |
+
 **Execution Flow**:
 1. Creates an `ExecutionJob` record in the database (status: `queued`)
-2. For Python: wraps the user code with the tracer script (see below)
+2. For Python/JavaScript: wraps the user code with the tracer script (see below)
 3. Submits the wrapped code to Judge0 via `POST /submissions?wait=false`
 4. Polls Judge0 `GET /submissions/:token` every 500ms (up to 30 attempts)
 5. On completion:
    - Parses trace output from stdout (between `---TRACE_START---` and `---TRACE_END---` markers)
+   - If `exerciseId` provided: runs user code against test cases from exercise
    - Updates the execution job with stdout, stderr, exit code, and parsed trace
-   - Returns the complete result
+   - Returns the complete result with test results (if applicable)
 
 **Error Responses**:
 

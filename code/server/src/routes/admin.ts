@@ -689,6 +689,10 @@ const adminRoutes: FastifyPluginAsync = async (app) => {
       }
     }
 
+    // ── Clear stale mastery records & execution jobs ────────
+    await prisma.executionJob.deleteMany({});
+    await prisma.masteryRecord.deleteMany({});
+
     const counts = {
       users: await prisma.user.count(),
       concepts: await prisma.concept.count(),

@@ -291,6 +291,14 @@ export const execution = {
     stderr: string | null;
     trace: unknown | null;
     durationMs: number | null;
+    testResults?: Array<{
+      input: string;
+      expectedOutput: string;
+      actualOutput: string;
+      passed: boolean;
+      error?: string;
+    }> | null;
+    allTestsPassed?: boolean | null;
   } | null> => {
     const envelope = await request<{
       jobId: string;
@@ -299,6 +307,14 @@ export const execution = {
       stderr: string | null;
       trace: unknown | null;
       durationMs: number | null;
+      testResults?: Array<{
+        input: string;
+        expectedOutput: string;
+        actualOutput: string;
+        passed: boolean;
+        error?: string;
+      }> | null;
+      allTestsPassed?: boolean | null;
     }>("/execution/run", {
       method: "POST",
       body: JSON.stringify(data),

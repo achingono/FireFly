@@ -159,6 +159,15 @@ export interface ExecutionJob {
   result?: ExecutionResult;
 }
 
+/** Test case result */
+export interface TestResult {
+  input: string;
+  expectedOutput: string;
+  actualOutput: string;
+  passed: boolean;
+  error?: string;
+}
+
 /** Execution result */
 export interface ExecutionResult {
   stdout: string;
@@ -166,4 +175,5 @@ export interface ExecutionResult {
   exitCode: number;
   durationMs: number;
   memoryKb: number;
+  testResults?: TestResult[];
 }

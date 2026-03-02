@@ -262,6 +262,14 @@ function SingleExercise({ exerciseId }: { exerciseId: string }) {
     stdout: string | null;
     stderr: string | null;
     jobId: string | null;
+    testResults?: Array<{
+      input: string;
+      expectedOutput: string;
+      actualOutput: string;
+      passed: boolean;
+      error?: string;
+    }> | null;
+    allTestsPassed?: boolean | null;
   } | null>(null);
   const [shownHint, setShownHint] = useState(0);
   const [showHints, setShowHints] = useState(false);
@@ -305,15 +313,17 @@ function SingleExercise({ exerciseId }: { exerciseId: string }) {
         language: exercise.language,
         sourceCode: code,
         exerciseId: exercise.id,
-      }) as { jobId: string; status: string; stdout: string | null; stderr: string | null; trace: unknown } | null;
+      }) as { jobId: string; status: string; stdout: string | null; stderr: string | null; trace: unknown; testResults?: Array<{ input: string; expectedOutput: string; actualOutput: string; passed: boolean; error?: string }> | null; allTestsPassed?: boolean | null } | null;
 
       if (result) {
-        const passed = result.status === "completed";
+        const passed = result.allTestsPassed ?? (result.status === "completed");
         setResults({
           status: passed ? "passed" : "failed",
           stdout: result.stdout,
           stderr: result.stderr,
           jobId: result.jobId,
+          testResults: result.testResults,
+          allTestsPassed: result.allTestsPassed,
         });
 
         // Submit mastery update if we have a concept and a logged-in user
@@ -556,6 +566,44 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
                     <div className="mt-2">
                       <h4 className="text-xs text-slate-500 font-semibold mb-1">stderr:</h4>
                       <pre className="text-xs font-mono text-rose-400/90 bg-black/30 rounded-lg p-3 whitespace-pre-wrap">{results.stderr}</pre>
+                    </div>
+                  )}
+                  {/* Test results */}
+                  {results.testResults && results.testResults.length > 0 && (
+                    <div className="mt-3">
+                      <h4 className="text-xs text-slate-500 font-semibold mb-2">Test Results:</h4>
+                      <div className="space-y-1.5">
+                        {results.testResults.map((tr, i) => (
+                          <div
+                            key={i}
+                            className={`flex items-start gap-2 rounded-lg border p-2.5 text-xs font-mono ${
+                              tr.passed
+                                ? "border-emerald-500/20 bg-emerald-500/5"
+                                : "border-rose-500/20 bg-rose-500/5"
+                            }`}
+                          >
+                            {tr.passed ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                            ) : (
+                              <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="text-slate-400">
+                                {tr.input ? `Input: ${tr.input}` : `Test ${i + 1}`}
+                              </div>
+                              <div className="text-emerald-400/80">
+                                Expected: <span className="text-emerald-400">{tr.expectedOutput}</span>
+                              </div>
+                              <div className={tr.passed ? "text-emerald-400/80" : "text-rose-400/80"}>
+                                Actual: <span className={tr.passed ? "text-emerald-400" : "text-rose-400"}>{tr.actualOutput || "(no output)"}</span>
+                              </div>
+                              {tr.error && (
+                                <div className="text-rose-400/70 mt-1">{tr.error}</div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                   {results.jobId && (

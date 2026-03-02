@@ -1,293 +1,15 @@
 import { FastifyPluginAsync } from "fastify";
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 import prisma from "../config/database.js";
 import { env } from "../config/env.js";
 
-// Python tracer script — wraps user code to generate canonical trace frames
-const PYTHON_TRACER = `
-import sys, json, base64
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PYTHON_TRACER = readFileSync(join(__dirname, "../tracers/python.py"), "utf-8");
+const JS_TRACER = readFileSync(join(__dirname, "../tracers/javascript.js"), "utf-8");
 
-_trace_frames = []
-_step = 0
-_start = None
 
-def _tracer(frame, event, arg):
-    global _step, _start
-    filename = frame.f_code.co_filename
-    if filename != '<user_code>':
-        return _tracer
-    if _start is None:
-        _start = frame.f_lineno
-
-    if event in ('line', 'call', 'return', 'exception'):
-        _step += 1
-        # Collect locals (simple values only)
-        local_vars = {}
-        for k, v in frame.f_locals.items():
-            if k.startswith('_') or k in _builtin_names:
-                continue
-            try:
-                local_vars[k] = repr(v)
-            except:
-                local_vars[k] = '<unprintable>'
-
-        # Build stack
-        stack = []
-        f = frame
-        while f:
-            if f.f_code.co_filename == '<user_code>':
-                stack.append({
-                    "funcName": f.f_code.co_name,
-                    "line": f.f_lineno,
-                    "locals": {k: repr(v) for k, v in f.f_locals.items() if not k.startswith('_') and k not in _builtin_names}
-                })
-            f = f.f_back
-        stack.reverse()
-
-        _trace_frames.append({
-            "step": _step,
-            "line": frame.f_lineno,
-            "event": event,
-            "funcName": frame.f_code.co_name,
-            "locals": local_vars,
-            "stack": stack,
-            "returnValue": repr(arg) if event == 'return' else None,
-            "exception": str(arg[1]) if event == 'exception' and arg else None,
-        })
-
-    return _tracer
-
-# Capture stdout
-from io import StringIO
-_captured_stdout = StringIO()
-_captured_stderr = StringIO()
-_orig_stdout = sys.stdout
-_orig_stderr = sys.stderr
-sys.stdout = _captured_stdout
-sys.stderr = _captured_stderr
-
-_builtin_names = set(dir()) | {'_builtin_names', '_user_code', '_user_error'}
-_user_error = None
-try:
-    _user_code = base64.b64decode("__BASE64_CODE__").decode("utf-8")
-    sys.settrace(_tracer)
-    exec(compile(_user_code, '<user_code>', 'exec'))
-except Exception as e:
-    _user_error = {"type": type(e).__name__, "message": str(e)}
-finally:
-    sys.settrace(None)
-    sys.stdout = _orig_stdout
-    sys.stderr = _orig_stderr
-
-print("---TRACE_START---")
-print(json.dumps({
-    "frames": _trace_frames,
-    "stdout": _captured_stdout.getvalue(),
-    "stderr": _captured_stderr.getvalue(),
-    "error": _user_error,
-}))
-print("---TRACE_END---")
-`;
-
-// JavaScript tracer script — wraps user code to generate canonical trace frames
-// Uses source-level instrumentation with vm.runInNewContext() (Node.js 12 compatible)
-const JS_TRACER = `
-'use strict';
-var vm = require('vm');
-
-var MAX_FRAMES = 500;
-var TIMEOUT_MS = 5000;
-var _frames = [];
-var _step = 0;
-var _callStack = [{ funcName: '<module>', line: 0 }];
-var _capturedStdout = [];
-var _capturedStderr = [];
-var _userError = null;
-var _done = false;
-
-// Decode user code from base64
-var _userCode = Buffer.from('__BASE64_CODE__', 'base64').toString('utf-8');
-var _userLines = _userCode.split('\\n');
-var _totalLines = _userLines.length;
-
-// Instrument the user code: prepend _t(lineNum) before each non-empty line
-// Also convert let/const to var so variables are accessible on the sandbox context
-function _instrumentCode(code) {
-  // Convert let/const to var so variables land on the sandbox object
-  // This allows the tracer to read them via Object.keys(_sandbox)
-  code = code.replace(/\\b(let|const)\\s+/g, 'var ');
-  var lines = code.split('\\n');
-  var result = [];
-  for (var i = 0; i < lines.length; i++) {
-    var line = lines[i];
-    var trimmed = line.trim();
-    // Skip empty lines and lines that are just comments
-    if (trimmed === '' || trimmed.startsWith('//')) {
-      result.push(line);
-      continue;
-    }
-    // Skip lines that are just closing braces/brackets
-    if (trimmed === '}' || trimmed === '};' || trimmed === ']' || trimmed === '];') {
-      result.push(line);
-      continue;
-    }
-    // Prepend trace call before each executable line
-    result.push('_t(' + (i + 1) + '); ' + line);
-  }
-  return result.join('\\n');
-}
-
-// Stringify a value for trace output (like Python repr)
-function _repr(val) {
-  if (val === undefined) return 'undefined';
-  if (val === null) return 'null';
-  if (typeof val === 'function') return 'function ' + (val.name || 'anonymous') + '()';
-  try {
-    return JSON.stringify(val);
-  } catch(e) {
-    return String(val);
-  }
-}
-
-// Build the sandbox context
-var _sandbox = {
-  console: {
-    log: function() {
-      var args = Array.prototype.slice.call(arguments);
-      _capturedStdout.push(args.map(String).join(' '));
-    },
-    error: function() {
-      var args = Array.prototype.slice.call(arguments);
-      _capturedStderr.push(args.map(String).join(' '));
-    },
-    warn: function() {
-      var args = Array.prototype.slice.call(arguments);
-      _capturedStderr.push(args.map(String).join(' '));
-    },
-    info: function() {
-      var args = Array.prototype.slice.call(arguments);
-      _capturedStdout.push(args.map(String).join(' '));
-    }
-  },
-  parseInt: parseInt,
-  parseFloat: parseFloat,
-  isNaN: isNaN,
-  isFinite: isFinite,
-  Math: Math,
-  Date: Date,
-  JSON: JSON,
-  Array: Array,
-  Object: Object,
-  String: String,
-  Number: Number,
-  Boolean: Boolean,
-  RegExp: RegExp,
-  Error: Error,
-  TypeError: TypeError,
-  RangeError: RangeError,
-  SyntaxError: SyntaxError,
-  ReferenceError: ReferenceError,
-  undefined: undefined,
-  NaN: NaN,
-  Infinity: Infinity,
-  _t: null // will be set below
-};
-
-// Set of keys that are sandbox infrastructure (not user variables)
-var _builtinKeys = new Set(Object.keys(_sandbox));
-_builtinKeys.add('_t');
-
-// Trace function — called before each user line
-_sandbox._t = function(lineNum) {
-  if (_done || _step >= MAX_FRAMES) {
-    _done = true;
-    return;
-  }
-  _step++;
-
-  // Collect locals from sandbox (only user-defined variables)
-  var locals = {};
-  var keys = Object.keys(_sandbox);
-  for (var i = 0; i < keys.length; i++) {
-    var k = keys[i];
-    if (_builtinKeys.has(k)) continue;
-    try {
-      locals[k] = _repr(_sandbox[k]);
-    } catch(e) {
-      locals[k] = '<error>';
-    }
-  }
-
-  // Build stack (single frame for top-level code)
-  var stack = [];
-  for (var s = 0; s < _callStack.length; s++) {
-    var sf = _callStack[s];
-    stack.push({
-      funcName: sf.funcName,
-      line: lineNum,
-      locals: locals
-    });
-  }
-
-  _frames.push({
-    step: _step,
-    line: lineNum,
-    event: 'line',
-    funcName: _callStack[_callStack.length - 1].funcName,
-    locals: locals,
-    stack: stack,
-    returnValue: null,
-    exception: null
-  });
-};
-
-// Instrument and execute
-try {
-  var _instrumented = _instrumentCode(_userCode);
-  vm.runInNewContext(_instrumented, _sandbox, {
-    filename: 'user_code.js',
-    timeout: TIMEOUT_MS
-  });
-} catch(e) {
-  if (e && e.code === 'ERR_SCRIPT_EXECUTION_TIMEOUT') {
-    _userError = { type: 'TimeoutError', message: 'Execution timed out (5s limit)' };
-  } else {
-    _userError = { type: (e && e.constructor && e.constructor.name) || 'Error', message: String(e && e.message || e) };
-  }
-}
-
-// Capture final variable state if we have frames
-if (_frames.length > 0 && !_done) {
-  var finalLocals = {};
-  var fkeys = Object.keys(_sandbox);
-  for (var fi = 0; fi < fkeys.length; fi++) {
-    var fk = fkeys[fi];
-    if (_builtinKeys.has(fk)) continue;
-    try {
-      finalLocals[fk] = _repr(_sandbox[fk]);
-    } catch(e) {
-      finalLocals[fk] = '<error>';
-    }
-  }
-  // Update the last frame's locals to reflect final state
-  _frames[_frames.length - 1].locals = finalLocals;
-  var lastStack = _frames[_frames.length - 1].stack;
-  if (lastStack.length > 0) {
-    lastStack[lastStack.length - 1].locals = finalLocals;
-  }
-}
-
-// Output trace
-var _output = {
-  frames: _frames,
-  stdout: _capturedStdout.join('\\n'),
-  stderr: _capturedStderr.join('\\n'),
-  error: _userError
-};
-
-process.stdout.write('---TRACE_START---\\n');
-process.stdout.write(JSON.stringify(_output));
-process.stdout.write('\\n---TRACE_END---\\n');
-`;
 
 function wrapWithJsTracer(userCode: string): string {
   const encoded = Buffer.from(userCode, "utf-8").toString("base64");
@@ -404,6 +126,126 @@ function parseTrace(rawStdout: string): TraceOutput | null {
   }
 }
 
+interface TestResult {
+  input: string;
+  expectedOutput: string;
+  actualOutput: string;
+  passed: boolean;
+  error?: string;
+}
+
+/**
+ * Evaluate user code against test cases.
+ *
+ * For empty-input test cases (self-contained exercises that produce their own
+ * output), we compare the already-captured stdout from the trace execution
+ * directly — no extra Judge0 calls needed.
+ *
+ * For non-empty-input test cases (function-style exercises where the test
+ * provides a calling expression), we submit each test case to Judge0 separately
+ * because the code+invocation differs from the original execution.
+ */
+async function evaluateTestCases(
+  userCode: string,
+  traceStdout: string | null,
+  testCases: Array<{ input: string; expectedOutput: string }>,
+  language: string,
+  languageId: number,
+  fastify: any
+): Promise<TestResult[]> {
+  const results: TestResult[] = [];
+
+  // Partition test cases into output-comparison (empty input) vs function-call (non-empty input)
+  const outputTests = testCases.filter(tc => !tc.input.trim());
+  const functionTests = testCases.filter(tc => tc.input.trim());
+
+  // --- Output-comparison tests: compare trace stdout directly ---
+  if (outputTests.length > 0) {
+    const actualOutput = (traceStdout ?? "").trim();
+
+    for (const testCase of outputTests) {
+      const expectedNormalized = testCase.expectedOutput.trim();
+      const passed = expectedNormalized === actualOutput;
+
+      results.push({
+        input: testCase.input,
+        expectedOutput: testCase.expectedOutput,
+        actualOutput,
+        passed,
+      });
+
+      fastify.log.debug(
+        `Output test: expected="${expectedNormalized}", actual="${actualOutput}", passed=${passed}`
+      );
+    }
+  }
+
+  // --- Function-call tests: need separate Judge0 execution ---
+  for (const testCase of functionTests) {
+    try {
+      let testCode: string;
+      if (language === "python") {
+        testCode = `${userCode}\n\n# Test invocation\nprint(${testCase.input})`;
+      } else if (language === "javascript") {
+        testCode = `${userCode}\n\n// Test invocation\nconsole.log(${testCase.input});`;
+      } else {
+        testCode = `${userCode}\n${testCase.input}`;
+      }
+
+      const token = await submitToJudge0({
+        source_code: testCode,
+        language_id: languageId,
+        cpu_time_limit: 5,
+        memory_limit: 128000,
+        wall_time_limit: 10,
+      });
+
+      const result = await pollJudge0(token);
+
+      let actualOutput = "";
+      let error: string | undefined;
+
+      if (result.status.id === 3) {
+        actualOutput = (result.stdout || "").trim();
+      } else if (result.status.id === 6) {
+        error = `Compilation Error: ${result.compile_output || "Unknown error"}`;
+      } else if (result.status.id === 7) {
+        error = `Runtime Error: ${result.stderr || "Unknown error"}`;
+        actualOutput = (result.stdout || "").trim();
+      } else {
+        error = `Execution failed: ${result.status.description}`;
+        actualOutput = (result.stdout || "").trim();
+      }
+
+      const expectedNormalized = testCase.expectedOutput.trim();
+      const actualNormalized = actualOutput.trim();
+      const passed = expectedNormalized === actualNormalized && !error;
+
+      results.push({
+        input: testCase.input,
+        expectedOutput: testCase.expectedOutput,
+        actualOutput,
+        passed,
+        error,
+      });
+
+      fastify.log.debug(
+        `Function test: input="${testCase.input}", expected="${expectedNormalized}", actual="${actualNormalized}", passed=${passed}`
+      );
+    } catch (err) {
+      results.push({
+        input: testCase.input,
+        expectedOutput: testCase.expectedOutput,
+        actualOutput: "",
+        passed: false,
+        error: `Test execution failed: ${(err as Error).message}`,
+      });
+    }
+  }
+
+  return results;
+}
+
 const executionRoutes: FastifyPluginAsync = async (fastify) => {
   /** POST /api/v1/execution/run — Submit code for execution */
   fastify.post<{
@@ -428,6 +270,22 @@ const executionRoutes: FastifyPluginAsync = async (fastify) => {
           undefined,
           400
         );
+      }
+
+      // Fetch exercise if exerciseId is provided
+      let exercise = null;
+      if (exerciseId) {
+        exercise = await prisma.exercise.findUnique({
+          where: { id: exerciseId },
+          select: {
+            id: true,
+            testCases: true,
+            language: true,
+          },
+        });
+        if (!exercise) {
+          return reply.envelopeError("NotFound", "Exercise not found", undefined, 404);
+        }
       }
 
       // Wrap with tracer for supported languages
@@ -513,6 +371,28 @@ const executionRoutes: FastifyPluginAsync = async (fastify) => {
           }
         }
 
+        // Evaluate test cases if exercise is provided and execution succeeded
+        let testResults: TestResult[] | null = null;
+        if (exercise && status === "completed") {
+          const exerciseTestCases = exercise.testCases as Array<{ input: string; expectedOutput: string }>;
+          if (exerciseTestCases.length > 0) {
+            testResults = await evaluateTestCases(
+              sourceCode,
+              userStdout,
+              exerciseTestCases,
+              language,
+              languageId,
+              fastify
+            );
+
+            // If any test failed, mark the overall execution as failed
+            const allPassed = testResults.every(tr => tr.passed);
+            if (!allPassed) {
+              status = "failed";
+            }
+          }
+        }
+
         // Update job
         await prisma.executionJob.update({
           where: { id: job.id },
@@ -534,6 +414,8 @@ const executionRoutes: FastifyPluginAsync = async (fastify) => {
           stderr: userStderr ?? result.compile_output ?? (statusMessage || null),
           trace,
           durationMs: result.time ? Math.round(parseFloat(result.time) * 1000) : null,
+          testResults,
+          allTestsPassed: testResults ? testResults.every(tr => tr.passed) : null,
         });
       } catch (err) {
         // Mark job as failed
