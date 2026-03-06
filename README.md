@@ -1,349 +1,180 @@
-# FireFly
+# FireFly – Kids Learn Code By Seeing It Run
 
-An AI-powered, mastery-based coding education platform for kids (ages 8+) that **visually steps through code execution**, adapts to the learner's age, and teaches programming concepts through demonstrated understanding.
+**Write code. Watch it execute. Understand, don't guess.**
+
+Most programming tutorials are walls of text. Kids copy code, it works (sometimes), and they have no idea why. FireFly is different.
+
+FireFly is **Python Tutor meets AI tutor** — built for ages 8 and up. Kids write real programs, watch them execute line-by-line with visual animation, get hints when stuck, and unlock new concepts only when they genuinely understand.
+
+> ⚠️ **Early stage.** Core visual stepper, mastery tracking, and AI tutor are working. More languages and teacher dashboards are planned.
 
 ---
 
-## What Is FireFly?
+## How It Works
 
-FireFly is a web platform where children learn to code by writing real programs, watching them execute step-by-step, and building genuine understanding before moving on. It combines:
+1. **Write real code** — Python in a full Monaco editor (same engine as VS Code)
+2. **See it run** — Every line executes with visual feedback: variables, stack, heap, output
+3. **Get unstuck** — AI tutor gives age-appropriate hints (no solutions handed out)
+4. **Prove understanding** — Concepts unlock only after ≥80% mastery (Bayesian Knowledge Tracing)
+5. **Level up** — Harder concepts unlock automatically as you master prerequisites
 
-- **A visual code stepper** (the core feature) — line-by-line execution with animated stack, heap, variable, and I/O panels inspired by [Python Tutor](https://pythontutor.com)
-- **Mastery-based progression** — concepts unlock only after the learner demonstrates ≥ 80% understanding (Bayesian Knowledge Tracing)
-- **An AI tutor** — context-aware hints and explanations grounded in the actual execution trace, adapted to the learner's age
-- **Age-adaptive UI** — three modes (Fun / Balanced / Pro) that adjust visuals, tone, and complexity
+---
 
-## Architecture
+## Why Kids Learn Faster
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Frontend (React + Vite + TypeScript)         :80 / :5173   │
-│  ├── Monaco Code Editor                                     │
-│  ├── Visual Stepper (Code / Stack / Heap / Output panes)    │
-│  ├── AI Tutor Panel                                         │
-│  └── Adaptive UI Engine (Fun / Balanced / Pro themes)       │
-└────────────────────────┬────────────────────────────────────┘
-                         │ REST API
-┌────────────────────────▼────────────────────────────────────┐
-│  Backend API (Node.js + Fastify + TypeScript)       :3000   │
-│  ├── Auth (OIDC login + JWT access/refresh tokens)          │
-│  ├── Curriculum CRUD (Concepts, Lessons, Exercises)         │
-│  ├── Progress & Mastery (Bayesian Knowledge Tracing)        │
-│  ├── Execution orchestrator → Judge0                        │
-│  ├── Python tracer (sys.settrace) → JSON trace frames       │
-│  └── LLM proxy (OpenAI-compatible, age-adapted prompts)     │
-└──────┬──────────────┬──────────────┬──────────┬─────────────┘
-       │              │              │          │
-┌──────▼──────┐ ┌─────▼─────┐ ┌─────▼──────┐ ┌▼────────────┐
-│ PostgreSQL  │ │   Redis   │ │  Judge0 +  │ │ OIDC        │
-│ :5432       │ │   :6379   │ │  Workers   │ │ Provider    │
-│ (Prisma ORM)│ │ (PKCE,    │ │  :2358     │ │ :9000       │
-│             │ │  cache)   │ │ (sandboxed │ │ (simple-    │
-│             │ │           │ │  execution)│ │  oidc)      │
-└─────────────┘ └───────────┘ └────────────┘ └─────────────┘
-```
+| Traditional tutorials | FireFly |
+|---|---|
+| Read text, copy code, hope it works | Watch code execute line-by-line |
+| No feedback on *why* something failed | See exactly where and why it broke |
+| Move on before understanding | Master before advancing |
+| One-size-fits-all difficulty | Adapts to your age and level |
+| No help when stuck | AI tutor available 24/7 |
 
-The full stack builds and runs via Docker Compose and is accessible at `https://localhost:9443`. See [Deployment Guide](docs/guides/deployment.md) for details.
+**Before FireFly:** Kids follow tutorials, copy code, don't understand.
+**After FireFly:** Kids write code, see execution, understand why.
 
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui (New York), Framer Motion |
-| Editor | Monaco Editor (`@monaco-editor/react`) |
-| State | React Context (auth, theme), TanStack Query (server state) |
-| Routing | react-router-dom v6 |
-| Forms | react-hook-form + Zod validation |
-| Backend | Node.js, Fastify, TypeScript |
-| ORM | Prisma with PostgreSQL (`@prisma/adapter-pg`) |
-| Auth | OIDC via `ghcr.io/plainscope/simple-oidc-provider` + JWT (access 15min, refresh 7d) |
-| Code Execution | Self-hosted Judge0 with Python `sys.settrace()` tracer |
-| AI / LLM | OpenAI-compatible API via LM Studio or Ollama |
-| Cache | Redis (PKCE verifiers, sessions) |
-| Infrastructure | Docker Compose (7 services) |
+---
 
 ## Age-Adaptive Modes
 
-| Mode | Ages | Character |
+| Mode | Ages | Experience |
 |------|------|-----------|
-| **Fun** | 8–10 | Bright colors, large rounded elements, playful language, confetti, emoji |
-| **Balanced** | 11–13 | Clean visuals, moderate sizing, guided hints, progress badges |
+| **Fun** | 8–10 | Bright colors, large text, playful language, confetti, emoji |
+| **Balanced** | 11–13 | Clean design, guided hints, progress badges |
 | **Pro** | 14+ | Dark theme, compact layout, technical language, keyboard shortcuts |
 
-Default is set by age during onboarding. Users can switch modes at any time via the theme selector.
+Set during onboarding. Switchable at any time.
 
-## Project Structure
+---
 
-```
-FireFly/
-├── code/
-│   ├── client/                # React + Vite + TypeScript SPA
-│   │   ├── src/
-│   │   │   ├── api/           # HTTP API client (client.ts)
-│   │   │   ├── assets/        # Static assets
-│   │   │   ├── components/
-│   │   │   │   ├── ui/        # shadcn/ui primitives (do not manually edit)
-│   │   │   │   ├── visualizer/ # Code stepper panes & controls
-│   │   │   │   └── dashboard/  # Student progress widgets
-│   │   │   ├── hooks/         # Custom React hooks
-│   │   │   ├── lib/           # AuthContext, ThemeContext, utilities
-│   │   │   ├── pages/         # Route-level page components (8 pages)
-│   │   │   └── types/         # TypeScript type definitions
-│   │   ├── Dockerfile         # Multi-stage: build → Nginx alpine
-│   │   ├── nginx.conf         # Reverse proxy config
-│   │   ├── vite.config.js
-│   │   ├── tailwind.config.js
-│   │   └── package.json
-│   │
-│   └── server/                # Node.js + Fastify + TypeScript API
-│       ├── prisma/
-│       │   ├── schema.prisma  # 8 models, 4 enums
-│       │   └── migrations/    # Prisma migration files
-│       ├── src/
-│       │   ├── config/        # env.ts, database.ts, redis.ts
-│       │   ├── plugins/       # auth.ts, envelope.ts, request-id.ts
-│       │   └── routes/        # health, admin, auth, curriculum, execution, mastery, llm
-│       ├── Dockerfile         # Multi-stage: build → Node.js alpine
-│       ├── tsconfig.json
-│       └── package.json
-│
-├── docs/
-│   ├── SPEC.md                # Product specification
-│   ├── implementation-plan.md # Task-level implementation plan
-│   ├── architecture/          # System architecture docs
-│   ├── api/                   # API reference docs
-│   └── guides/                # How-to guides
-│
-├── docker-compose.yml         # 7-service stack
-├── .env.example               # Environment variable template (17 vars)
-├── AGENTS.md                  # AI agent instructions
-├── LICENSE
-└── README.md
+## Quick Start
+
+```bash
+git clone https://github.com/achingono/firefly.git
+cd firefly
+./start.sh
 ```
 
-## Getting Started
+Open **https://localhost:9443** — accept the self-signed certificate warning.
+
+**Default login:**
+- Email: `admin@localhost`
+- Password: `Divide-30-Weight`
+
+> Seed sample data after first login:
+> ```bash
+> curl -X POST -k https://localhost:9443/api/v1/admin/seed
+> ```
 
 ### Prerequisites
 
 - [Docker](https://www.docker.com/) and Docker Compose
-- [Git](https://git-scm.com/)
-- [Node.js](https://nodejs.org/) ≥ 20 (only for local development without Docker)
-- [LM Studio](https://lmstudio.ai/) or [Ollama](https://ollama.com/) (optional, for AI features)
+- 4 GB RAM minimum
+- Optional: [LM Studio](https://lmstudio.ai/) or [Ollama](https://ollama.com/) for AI features
 
-### Quick Start (Docker Compose)
+### With AI Features (Ollama)
 
 ```bash
-# Clone and configure
-git clone https://github.com/achingono/FireFly.git
-cd FireFly
-cp .env.example .env
-
-# Start all 7 services
-docker compose up -d
-
-# Optional: include Ollama services (ollama + ollama-init)
 docker compose -f docker-compose.yml -f docker-compose.ollama.yml --profile ollama up -d
-
-# Seed sample data (concepts, lessons, exercises)
-curl -X POST -k https://localhost:9443/api/v1/admin/seed
-
-# Open the app (note: accept the self-signed certificate warning)
-open https://localhost:9443
 ```
 
-**Security Note**: The app uses a self-signed TLS certificate for local development. Your browser will show a security warning — click "Advanced" → "Proceed to localhost (unsafe)" to continue. All traffic is encrypted through nginx TLS termination on port 9443.
-
-### Default Login Credentials
-
-Authentication test credentials are defined in `config/oidc/users.json`. The default test account is:
-
-- **Email**: `admin@localhost`
-- **Password**: `Divide-30-Weight`
-
 ### Development (Hot Reload)
-
-For local development with hot reload, start only the infrastructure services in Docker and run the client and server natively:
 
 ```bash
 # Start infrastructure only
 docker compose up -d postgres redis judge0 judge0-workers oidc
 
-# Server (terminal 1)
-cd code/server
-npm install
-npx prisma generate
-npx prisma migrate deploy
-npm run dev    # Fastify on http://localhost:3000
+# Terminal 1 — server
+cd code/server && npm install && npx prisma generate && npx prisma migrate deploy && npm run dev
 
-# Client (terminal 2)
-cd code/client
-npm install
-npm run dev    # Vite on http://localhost:5173 (proxies /api to :3000)
+# Terminal 2 — client
+cd code/client && npm install && npm run dev
 ```
 
-### Enable AI Features
+---
 
-Use either [LM Studio](https://lmstudio.ai/) or [Ollama](https://ollama.com/) as an OpenAI-compatible local model host.
+## What's Implemented
 
-- **LM Studio**: load a model and start the local server on port `1234` (for example `http://host.docker.internal:1234/v1`).
-- **Ollama**: pull and run a model, then expose an OpenAI-compatible endpoint (for example `http://host.docker.internal:11434/v1`).
+- ✅ Visual code stepper — line-by-line Python execution with stack, heap, variable, and output panes
+- ✅ Age-adaptive UI — Fun / Balanced / Pro modes
+- ✅ Bayesian Knowledge Tracing — mastery-based progression (≥80% to unlock next concept)
+- ✅ AI tutor — explain, hint, and chat modes (OpenAI-compatible)
+- ✅ Authentication — OIDC + JWT (access 15min, refresh 7d)
+- ✅ Sandboxed code execution — Judge0 + Python sys.settrace tracer
+- ✅ Docker Compose deployment — 7 services, one command
+- ⏳ More languages — JavaScript, Java, others (planned)
+- ⏳ Teacher dashboard — classroom management (planned)
+- ⏳ Curriculum builder — create custom lessons (planned)
+- ⏳ Community lessons — shared by educators (planned)
 
-To run Ollama inside this repository's Docker Compose stack, start with the `ollama` profile:
+---
 
-```bash
-docker compose -f docker-compose.yml -f docker-compose.ollama.yml --profile ollama up -d
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Frontend (React + Vite + TypeScript)             :80/:5173 │
+│  ├── Monaco Code Editor                                     │
+│  ├── Visual Stepper (Code / Stack / Heap / Output panes)   │
+│  ├── AI Tutor Panel                                         │
+│  └── Adaptive UI Engine (Fun / Balanced / Pro themes)       │
+└────────────────────────┬────────────────────────────────────┘
+                         │ REST API
+┌────────────────────────▼────────────────────────────────────┐
+│  Backend API (Node.js + Fastify + TypeScript)        :3000  │
+│  ├── Auth (OIDC + JWT)                                      │
+│  ├── Curriculum CRUD                                        │
+│  ├── Progress & Mastery (BKT)                               │
+│  ├── Execution orchestrator → Judge0                        │
+│  ├── Python tracer (sys.settrace) → JSON trace frames       │
+│  └── LLM proxy (OpenAI-compatible, age-adapted prompts)     │
+└──────┬──────────────┬──────────────┬──────────┬─────────────┘
+       │              │              │          │
+  PostgreSQL       Redis          Judge0      OIDC
+  (Prisma ORM)  (sessions/cache) (execution) (auth)
 ```
 
-When the server runs in Docker Compose with that profile, set:
+See [Architecture Docs](docs/architecture/) for full detail.
 
-- `LLM_PROVIDER=ollama`
-- `LLM_BASE_URL=http://ollama:11434`
+---
 
-Set `LLM_BASE_URL` to the endpoint for your chosen provider.
+## Tech Stack
 
-### Environment Variables
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui, Framer Motion |
+| Editor | Monaco Editor |
+| Backend | Node.js, Fastify, TypeScript |
+| ORM | Prisma + PostgreSQL |
+| Auth | OIDC + JWT |
+| Code Execution | Judge0 + Python sys.settrace |
+| AI / LLM | OpenAI-compatible (LM Studio or Ollama) |
+| Cache | Redis |
+| Infrastructure | Docker Compose |
 
-The `.env.example` file contains all 17 required variables. Key settings:
+---
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DATABASE_URL` | `postgresql://firefly:...@postgres:5432/firefly` | PostgreSQL connection string |
-| `REDIS_URL` | `redis://redis:6379` | Redis connection string |
-| `JUDGE0_URL` | `http://judge0:2358` | Judge0 API endpoint |
-| `OIDC_ISSUER` | `http://oidc:9000` | OIDC provider URL |
-| `OIDC_CLIENT_ID` | `firefly` | OIDC client identifier |
-| `OIDC_REDIRECT_URI` | `http://localhost:3000/api/v1/auth/callback` | OAuth callback URL |
-| `JWT_SECRET` | — | Secret key for JWT signing |
-| `LLM_PROVIDER` | `openai` | LLM provider type |
-| `LLM_BASE_URL` | `http://host.docker.internal:1234/v1` | OpenAI-compatible endpoint (LM Studio or Ollama) |
-| `CLIENT_ORIGIN` | `http://localhost:80` | CORS origin for the client |
-| `VITE_API_URL` | `http://localhost:3000/api/v1` | API URL for the client |
+## Who Should Use FireFly?
 
-See [Getting Started Guide](docs/guides/getting-started.md) for the complete list.
+- **Parents** teaching kids programming at home
+- **Teachers** in schools, coding bootcamps, or after-school programs
+- **Homeschool programs** looking for interactive coding curriculum
+- **Self-learners** aged 8–18 who want to truly understand Python
+- **Educators** who care about privacy (runs locally, fully open source)
 
-## API Overview
-
-All endpoints are under `/api/v1/`. Every response uses a standardized envelope:
-
-```json
-{
-  "status": "success",
-  "code": 200,
-  "requestId": "550e8400-e29b-41d4-a716-446655440000",
-  "data": { },
-  "meta": { "schemaVersion": "1.0" }
-}
-```
-
-### Endpoints
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/health` | No | Health check |
-| POST | `/admin/seed` | No | Seed database with sample data |
-| GET | `/auth/login` | No | Initiate OIDC login (redirects to provider) |
-| GET | `/auth/callback` | No | OIDC callback (exchanges code for tokens) |
-| GET | `/auth/me` | Yes | Current user profile |
-| POST | `/auth/refresh` | No | Refresh JWT using httpOnly cookie |
-| POST | `/auth/onboard` | Yes | Complete onboarding (display name, age) |
-| POST | `/auth/logout` | No | Clear session cookies |
-| GET | `/concepts` | Yes | List all concepts |
-| GET | `/concepts/:id` | Yes | Get concept details |
-| POST | `/concepts` | Admin | Create concept |
-| GET | `/lessons` | Yes | List lessons (filterable by concept) |
-| GET | `/lessons/:id` | Yes | Get lesson with exercises |
-| POST | `/lessons` | Admin | Create lesson |
-| GET | `/exercises` | Yes | List exercises (filterable by lesson) |
-| GET | `/exercises/:id` | Yes | Get exercise details |
-| POST | `/exercises` | Admin | Create exercise |
-| POST | `/execution/run` | Yes | Submit code for execution |
-| GET | `/execution/jobs/:id` | Yes | Check execution job status |
-| GET | `/execution/jobs/:id/trace` | Yes | Get execution trace |
-| GET | `/progress/:userId` | Yes | Full mastery map |
-| POST | `/progress/:userId/update` | Yes | Submit attempt (BKT update) |
-| GET | `/progress/:userId/concept/:conceptId` | Yes | Concept mastery detail |
-| POST | `/ai/explain` | Yes | AI code explanation |
-| POST | `/ai/hint` | Yes | AI exercise hint (won't give solutions) |
-| POST | `/ai/chat` | Yes | AI conversation |
-
-See the [API Reference](docs/api/overview.md) for detailed request/response documentation.
-
-## Key Features
-
-### Visual Code Stepper
-
-The core feature — an interactive, step-through visualization of Python code execution:
-
-- **Code Pane** — source with current-line highlighting (Monaco Editor, read-only during replay)
-- **Stack Pane** — call frames with local variable values at each step
-- **Heap Pane** — objects, lists, and references displayed as cards
-- **Output Pane** — stdout/stderr accumulated through execution
-- **Controls** — step forward/backward, play/pause, speed slider, step counter, reset
-- **AI Panel** — "Explain This Step" generates an age-appropriate explanation of the current execution state
-
-### Mastery & Progression
-
-- **Bayesian Knowledge Tracing (BKT)** scores each concept 0.0 – 1.0
-- Mastery threshold: ≥ 0.80 to unlock dependent concepts
-- Parameters: pL₀=0.10, pT=0.20, pG=0.25, pS=0.10
-- Progress dashboard shows concept map with mastery levels and streaks
-
-### AI Tutor
-
-- Three modes: **explain** (code explanation), **hint** (guided help without solutions), **chat** (open conversation)
-- Age-adapted system prompts automatically adjust language complexity
-- Powered by any OpenAI-compatible API (LM Studio or Ollama for local development)
-
-### Adaptive Theming
-
-- **Fun Mode** (ages 8–10): bright colors, large text, rounded corners, playful tone
-- **Balanced Mode** (ages 11–13): clean design, moderate sizing, guided experience
-- **Pro Mode** (ages 14+): dark theme, compact layout, technical language
-- Theme-aware CSS custom properties on `<html>` element, switchable at runtime
-
-## Commands Reference
-
-### Client (`code/client/`)
-
-| Command | Purpose |
-|---------|---------|
-| `npm run dev` | Vite dev server (port 5173, proxies /api to 3000) |
-| `npm run build` | Production build to `dist/` |
-| `npm run lint` | ESLint (quiet mode) |
-| `npm run lint:fix` | Auto-fix lint errors |
-| `npm run preview` | Preview production build |
-
-### Server (`code/server/`)
-
-| Command | Purpose |
-|---------|---------|
-| `npm run dev` | Start with tsx watch (auto-reload) |
-| `npm run build` | Compile TypeScript to `dist/` |
-| `npm start` | Run compiled output |
-| `npx prisma generate` | Regenerate Prisma client |
-| `npx prisma migrate dev` | Create new migration |
-| `npx prisma migrate deploy` | Apply pending migrations |
-| `npx prisma studio` | Open database GUI |
-
-### Docker Compose
-
-```bash
-docker compose up -d              # Start all services
-docker compose down                # Stop all services
-docker compose up -d --build       # Rebuild after code changes
-docker compose logs -f server      # Follow server logs
-docker compose logs -f client      # Follow client logs
-```
+---
 
 ## Documentation
 
 | Section | Path | Description |
 |---------|------|-------------|
-| **Architecture** | [`docs/architecture/`](docs/architecture/) | System overview, backend, frontend, database |
-| **API Reference** | [`docs/api/`](docs/api/) | All 25 endpoints with request/response examples |
-| **Guides** | [`docs/guides/`](docs/guides/) | Getting started, development, deployment, auth, theming, execution |
-| **Specification** | [`docs/SPEC.md`](docs/SPEC.md) | Product specification |
-| **Implementation** | [`docs/implementation-plan.md`](docs/implementation-plan.md) | Task-level implementation plan |
+| Architecture | [`docs/architecture/`](docs/architecture/) | System overview, backend, frontend, database |
+| API Reference | [`docs/api/`](docs/api/) | All endpoints with request/response examples |
+| Guides | [`docs/guides/`](docs/guides/) | Getting started, development, deployment, auth, theming |
+| Specification | [`docs/SPEC.md`](docs/SPEC.md) | Product specification |
+| Implementation | [`docs/implementation-plan.md`](docs/implementation-plan.md) | Task-level plan |
+
+---
 
 ## Contributing
 
@@ -351,50 +182,18 @@ docker compose logs -f client      # Follow client logs
 2. Create a feature branch (`git checkout -b feature/my-feature`)
 3. Run `npm run lint` in `code/client/` before committing client changes
 4. Run `npm run build` in `code/server/` before committing server changes
-5. Commit with imperative mood (e.g., `Add JWT auth middleware`)
-6. Open a Pull Request with title format: `[area] Description`
+5. Commit with imperative mood: `Add JWT auth middleware`
+6. Open a PR with title format: `[area] Description`
 
-## Credits & Acknowledgments
+---
 
-FireFly is built on the shoulders of brilliant open-source projects and tools:
+## Credits
 
-**Frontend**
-- [React](https://react.dev/) — UI library foundation
-- [Vite](https://vitejs.dev/) — Lightning-fast build tool and dev server
-- [Tailwind CSS](https://tailwindcss.com/) — Utility-first CSS framework for rapid UI development
-- [shadcn/ui](https://ui.shadcn.com/) — High-quality, customizable React components
-- [Monaco Editor](https://microsoft.github.io/monaco-editor/) — Code editor powering VS Code
-- [Framer Motion](https://www.framer.com/motion/) — Smooth animation library
-- [TanStack Query](https://tanstack.com/query/latest) — Server state management
-- [react-router-dom](https://reactrouter.com/) — Client-side routing
-- [react-hook-form](https://react-hook-form.com/) — Performant form handling
-- [Zod](https://zod.dev/) — Schema validation
-- [Lucide React](https://lucide.dev/) — Beautiful SVG icons
+FireFly builds on brilliant open-source work:
 
-**Backend**
-- [Node.js](https://nodejs.org/) — JavaScript runtime
-- [Fastify](https://www.fastify.io/) — Fast, low-overhead web framework
-- [TypeScript](https://www.typescriptlang.org/) — Type-safe JavaScript
-- [Prisma](https://www.prisma.io/) — Modern ORM and schema management
+[React](https://react.dev/) · [Vite](https://vitejs.dev/) · [Tailwind CSS](https://tailwindcss.com/) · [shadcn/ui](https://ui.shadcn.com/) · [Monaco Editor](https://microsoft.github.io/monaco-editor/) · [Framer Motion](https://www.framer.com/motion/) · [Fastify](https://www.fastify.io/) · [Prisma](https://www.prisma.io/) · [Judge0](https://judge0.com/) · [Python Tutor](https://pythontutor.com/) (inspiration) · [Ollama](https://ollama.com/) · [LM Studio](https://lmstudio.ai/)
 
-**Infrastructure & Services**
-- [PostgreSQL](https://www.postgresql.org/) — Reliable relational database
-- [Redis](https://redis.io/) — In-memory data store for caching and sessions
-- [Judge0](https://judge0.com/) — Cloud-based code execution engine
-- [plainscope/simple-oidc-provider](https://github.com/plainscope/simple-oidc-provider) — Lightweight OIDC provider
-- [Docker](https://www.docker.com/) & [Docker Compose](https://docs.docker.com/compose/) — Containerization and orchestration
-
-**AI & Learning**
-- [OpenAI API](https://openai.com/api/) — LLM foundation
-- [LM Studio](https://lmstudio.ai/) — Local LLM inference
-- [Ollama](https://ollama.com/) — Local model hosting
-- [Python Tutor](https://pythontutor.com/) — Inspiration for the visual code stepper
-
-**Development & Tooling**
-- [TypeScript](https://www.typescriptlang.org/) — Type safety across the stack
-- [ESLint](https://eslint.org/) — Code quality and consistency
-
-Thank you to all contributors, maintainers, and the open-source community!
+---
 
 ## License
 

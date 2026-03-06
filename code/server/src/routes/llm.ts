@@ -33,7 +33,7 @@ async function callLLM(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "tinyllama",
+        model: env.LLM_MODEL,
         messages,
         stream: false,
         options: {
@@ -59,7 +59,7 @@ async function callLLM(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "default",
+        model: env.LLM_MODEL,
         messages,
         max_tokens: maxTokens,
         temperature,
