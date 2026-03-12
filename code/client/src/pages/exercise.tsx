@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import Editor from "@monaco-editor/react";
-import { client, execution, progress, ai, MasteryUpdateResponse, MasteryConcept } from "@/api/client";
+import { client, execution, ai, MasteryUpdateResponse } from "@/api/client";
 import { Link, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { ChevronLeft, Play, Lightbulb, CheckCircle2, XCircle, Loader2, Eye, ArrowLeft, Lock } from "lucide-react";
+import { ChevronLeft, Play, Lightbulb, Loader2, Eye, ArrowLeft, Lock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/lib/ThemeContext";
 import { useAuth } from "@/lib/AuthContext";
+import { ResultsPanel, MasteryFeedbackPanel, FILE_EXT_MAP, checkPrerequisites, trySubmitMastery } from "@/components/exercise";
+import type { ExerciseResult } from "@/components/exercise";
 
 interface Exercise {
   id: string;
@@ -48,44 +50,6 @@ export default function ExercisePage() {
     return <SingleExercise exerciseId={exerciseId} />;
   }
   return <ExerciseList conceptId={conceptId} />;
-}
-
-// ─── Helpers ────────────────────────────────────────────────────
-
-async function buildMasteryMap(userId: string): Promise<Map<string, MasteryConcept>> {
-  const mastery = await progress.masteryMap(userId);
-  const map = new Map<string, MasteryConcept>();
-  for (const c of mastery?.concepts ?? []) {
-    map.set(c.conceptId, c);
-  }
-  return map;
-}
-
-async function resolveUnmetPrereqNames(
-  prereqs: string[],
-  masteryById: Map<string, MasteryConcept>
-): Promise<string[]> {
-  const unmetIds = prereqs.filter((id) => !masteryById.get(id)?.mastered);
-  if (unmetIds.length === 0) return [];
-  const allConcepts = await client.entities.concepts.list() as Array<{ id: string; name: string }>;
-  const conceptsById = new Map(allConcepts.map((c) => [c.id, c]));
-  return unmetIds.map((id) => conceptsById.get(id)?.name ?? "Unknown");
-}
-
-async function checkPrerequisites(
-  prereqs: string[],
-  userId: string
-): Promise<{ locked: boolean; unmetNames: string[] }> {
-  if (prereqs.length === 0) return { locked: false, unmetNames: [] };
-  try {
-    const masteryById = await buildMasteryMap(userId);
-    const allMet = prereqs.every((id) => masteryById.get(id)?.mastered);
-    if (allMet) return { locked: false, unmetNames: [] };
-    const unmetNames = await resolveUnmetPrereqNames(prereqs, masteryById);
-    return { locked: true, unmetNames };
-  } catch {
-    return { locked: false, unmetNames: [] };
-  }
 }
 
 // ─── Exercise List ──────────────────────────────────────────────
@@ -257,148 +221,6 @@ function ExerciseList({ conceptId }: { conceptId: string | null }) {
   );
 }
 
-// ─── Exercise result helpers ─────────────────────────────────────
-
-async function trySubmitMastery(
-  userId: string,
-  conceptId: string,
-  exerciseId: string,
-  correct: boolean
-): Promise<MasteryUpdateResponse | null> {
-  try {
-    const result = await progress.submit(userId, { conceptId, correct, exerciseId });
-    return result ?? null;
-  } catch (err) {
-    console.error("Failed to submit mastery update:", err);
-    return null;
-  }
-}
-
-interface ExerciseResult {
-  status: string;
-  stdout: string | null;
-  stderr: string | null;
-  jobId: string | null;
-  testResults?: Array<{
-    input: string;
-    expectedOutput: string;
-    actualOutput: string;
-    passed: boolean;
-    error?: string;
-  }> | null;
-  allTestsPassed?: boolean | null;
-}
-
-function ResultsPanel({ results, isPro }: { results: ExerciseResult; isPro: boolean }) {
-  const passedMessage = isPro ? "Execution complete \u2014 0 errors." : "Code executed successfully! \ud83c\udf89";
-  const failedMessage = isPro ? "Execution failed \u2014 see output." : "Execution failed \u2014 check the output below.";
-  return (
-    <div className="p-4">
-      <div className={`flex items-center gap-2 mb-3 font-semibold ${results.status === "passed" ? "text-emerald-400" : "text-rose-400"}`}>
-        {results.status === "passed" ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
-        {results.status === "passed" ? passedMessage : failedMessage}
-      </div>
-      {results.stdout && (
-        <div className="mt-2">
-          <h4 className="text-xs text-slate-500 font-semibold mb-1">stdout:</h4>
-          <pre className="text-xs font-mono text-green-400/90 bg-black/30 rounded-lg p-3 whitespace-pre-wrap">{results.stdout}</pre>
-        </div>
-      )}
-      {results.stderr && (
-        <div className="mt-2">
-          <h4 className="text-xs text-slate-500 font-semibold mb-1">stderr:</h4>
-          <pre className="text-xs font-mono text-rose-400/90 bg-black/30 rounded-lg p-3 whitespace-pre-wrap">{results.stderr}</pre>
-        </div>
-      )}
-      {results.testResults && results.testResults.length > 0 && (
-        <div className="mt-3">
-          <h4 className="text-xs text-slate-500 font-semibold mb-2">Test Results:</h4>
-          <div className="space-y-1.5">
-            {results.testResults.map((tr, i) => (
-              <div
-                key={`tr-${i}-${tr.input ?? ""}`}
-                className={`flex items-start gap-2 rounded-lg border p-2.5 text-xs font-mono ${
-                  tr.passed ? "border-emerald-500/20 bg-emerald-500/5" : "border-rose-500/20 bg-rose-500/5"
-                }`}
-              >
-                {tr.passed ? (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                ) : (
-                  <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="text-slate-400">{tr.input ? `Input: ${tr.input}` : `Test ${i + 1}`}</div>
-                  <div className="text-emerald-400/80">
-                    Expected: <span className="text-emerald-400">{tr.expectedOutput}</span>
-                  </div>
-                  <div className={tr.passed ? "text-emerald-400/80" : "text-rose-400/80"}>
-                    Actual: <span className={tr.passed ? "text-emerald-400" : "text-rose-400"}>{tr.actualOutput || "(no output)"}</span>
-                  </div>
-                  {tr.error && <div className="text-rose-400/70 mt-1">{tr.error}</div>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {results.jobId && (
-        <Link
-          to={createPageUrl(`Visualizer?jobId=${results.jobId}`)}
-          className="inline-flex items-center gap-1.5 mt-3 text-xs text-violet-400 hover:text-violet-300"
-        >
-          <Eye className="w-3.5 h-3.5" />
-          View execution trace in Visualizer
-        </Link>
-      )}
-    </div>
-  );
-}
-
-function MasteryFeedbackPanel({ feedback, isPro }: { feedback: MasteryUpdateResponse; isPro: boolean }) {
-  return (
-    <div className="p-4 space-y-2">
-      <div className="flex items-center gap-3">
-        <div className={`text-sm font-semibold ${feedback.delta >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-          Mastery: {Math.round(feedback.newScore * 100)}%
-          <span className="ml-2 text-xs">
-            ({feedback.delta >= 0 ? "+" : ""}{Math.round(feedback.delta * 100)}%)
-          </span>
-        </div>
-        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-          <motion.div
-            className="h-full bg-violet-500 rounded-full"
-            initial={{ width: `${Math.round(feedback.previousScore * 100)}%` }}
-            animate={{ width: `${Math.round(feedback.newScore * 100)}%` }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-          />
-        </div>
-      </div>
-      {feedback.justMastered && (
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20"
-        >
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-          <span className="text-sm font-semibold text-emerald-400">
-            {isPro ? "Concept mastered." : "You mastered this concept! \uD83C\uDF1F"}
-          </span>
-        </motion.div>
-      )}
-      {feedback.newlyUnlocked.length > 0 && (
-        <div className="flex items-center gap-2 text-sm text-violet-400">
-          <span>{isPro ? "Unlocked:" : "\uD83D\uDD13 New concepts unlocked:"}</span>
-          {feedback.newlyUnlocked.map((name) => (
-            <span key={name} className="px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-xs font-medium">
-              {name}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Single Exercise ────────────────────────────────────────────
 
 function SingleExercise({ exerciseId }: { exerciseId: string }) {
@@ -526,7 +348,6 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
     );
   }
 
-  const FILE_EXT_MAP: Record<string, string> = { python: "py", javascript: "js" };
   const fileExtension = FILE_EXT_MAP[exercise.language] ?? exercise.language;
 
   return (

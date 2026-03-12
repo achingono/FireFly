@@ -2,87 +2,15 @@ import { FastifyPluginAsync } from "fastify";
 import * as client from "openid-client";
 import { env } from "../config/env.js";
 import prisma from "../config/database.js";
-import redis from "../config/redis.js";
-
-// OIDC configuration — lazily initialized
-let oidcConfig: client.Configuration | null = null;
-// The public issuer URL from OIDC metadata (e.g. https://localhost:4443).
-// Used to rewrite internal Docker URLs to browser-accessible URLs.
-let oidcPublicIssuer: string = env.OIDC_ISSUER;
-
-// Cookie security: derived from NODE_ENV unless explicitly overridden
-const isSecureCookie = env.NODE_ENV === "production";
-
-/** Convert a duration string like "15m" or "7d" to seconds. */
-function durationToSeconds(duration: string): number {
-  const match = duration.match(/^(\d+)([smhd])$/);
-  if (!match) return 900; // fallback: 15 min
-  const value = parseInt(match[1], 10);
-  switch (match[2]) {
-    case "s": return value;
-    case "m": return value * 60;
-    case "h": return value * 3600;
-    case "d": return value * 86400;
-    default: return 900;
-  }
-}
-
-const ACCESS_TOKEN_MAX_AGE = durationToSeconds(env.JWT_EXPIRES_IN);
-const REFRESH_TOKEN_MAX_AGE = durationToSeconds(env.JWT_REFRESH_EXPIRES_IN);
-
-async function getOidcConfig(): Promise<client.Configuration> {
-  if (oidcConfig) return oidcConfig;
-  const issuerUrl = new URL(env.OIDC_ISSUER);
-
-  // When the server reaches the OIDC provider via an internal Docker network URL
-  // (e.g. http://oidc:8080) but the provider advertises a public issuer URL
-  // (e.g. https://localhost:4443), openid-client's discovery() will reject the
-  // mismatch.  Work around this by fetching the metadata manually and using the
-  // Configuration constructor, which skips issuer-URL validation.
-  const wellKnown = new URL('/.well-known/openid-configuration', issuerUrl);
-  const res = await fetch(wellKnown.href);
-  if (!res.ok) {
-    throw new Error(`OIDC discovery failed: ${res.status} ${res.statusText}`);
-  }
-  const metadata = (await res.json()) as client.ServerMetadata;
-
-  // Store the public issuer URL from metadata for URL rewriting
-  oidcPublicIssuer = metadata.issuer;
-
-  oidcConfig = new client.Configuration(metadata, env.OIDC_CLIENT_ID, env.OIDC_CLIENT_SECRET);
-
-  // In Docker, the server reaches the OIDC provider via HTTP (e.g. http://oidc:8080).
-  // oauth4webapi enforces HTTPS by default; allow HTTP for internal network calls.
-  client.allowInsecureRequests(oidcConfig);
-
-  return oidcConfig;
-}
-
-// Store PKCE verifiers in Redis (or in-memory fallback)
-const memoryStore = new Map<string, string>();
-
-async function storeVerifier(state: string, codeVerifier: string): Promise<void> {
-  try {
-    await redis.set(`oidc:verifier:${state}`, codeVerifier, "EX", 600); // 10 min TTL
-  } catch {
-    memoryStore.set(state, codeVerifier);
-  }
-}
-
-async function getVerifier(state: string): Promise<string | null> {
-  try {
-    const val = await redis.get(`oidc:verifier:${state}`);
-    if (val) {
-      await redis.del(`oidc:verifier:${state}`);
-      return val;
-    }
-  } catch {
-    // fallback to memory
-  }
-  const val = memoryStore.get(state) ?? null;
-  if (val) memoryStore.delete(state);
-  return val;
-}
+import {
+  isSecureCookie,
+  ACCESS_TOKEN_MAX_AGE,
+  REFRESH_TOKEN_MAX_AGE,
+  getOidcConfig,
+  getOidcPublicIssuer,
+  storeVerifier,
+  getVerifier,
+} from "../lib/oidc.js";
 
 const authRoutes: FastifyPluginAsync = async (app) => {
   // ─── GET /api/v1/auth/login — Redirect to OIDC provider ───
@@ -107,7 +35,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
     // Rewrite internal OIDC URL to browser-accessible public OIDC URL.
     // metadata.issuer is the public URL (e.g. https://localhost:4443) while
     // the endpoint URLs use the Docker-internal base (e.g. http://oidc:8080).
-    const publicUrl = redirectTo.href.replace(env.OIDC_ISSUER, oidcPublicIssuer);
+    const publicUrl = redirectTo.href.replace(env.OIDC_ISSUER, getOidcPublicIssuer());
 
     return reply.redirect(publicUrl);
   });
