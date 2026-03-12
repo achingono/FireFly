@@ -3,14 +3,10 @@ import prisma from "../config/database.js";
 
 const analyticsRoutes: FastifyPluginAsync = async (app) => {
   // GET /api/v1/admin/analytics — Teacher dashboard analytics
-  app.get("/api/v1/admin/analytics", async (request, reply) => {
-    const user = (request as any).user;
-    if (user?.role !== "teacher" && user?.role !== "admin") {
-      return reply.code(403).envelopeError("FORBIDDEN", "Only teachers and admins can access analytics");
-    }
-
+  app.get("/api/v1/admin/analytics", { preHandler: [app.requireRole("teacher", "admin")] }, async (request, reply) => {
+    const user = request.user;
     // Get all students for this teacher (if teacher)
-    const teacherId = user?.role === "teacher" ? user.id : null;
+    const teacherId = user?.role === "teacher" ? user.sub : null;
     const students = await prisma.user.findMany({
       where: { role: "student" },
       select: { id: true, displayName: true, email: true, role: true, age: true },
