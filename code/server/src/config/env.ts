@@ -22,6 +22,7 @@ const envSchema = z.object({
   JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
   LLM_PROVIDER: z.string().default("lmstudio"),
   LLM_BASE_URL: z.string().default("http://localhost:1234"),
+  LLM_MODEL: z.string().default("default"),
   CLIENT_ORIGIN: z.string().default("http://localhost:5173"),
 });
 

@@ -91,6 +91,9 @@ services:
       ENABLE_COMPILER_OPTIONS: "false"
       ENABLE_COMMAND_LINE_ARGUMENTS: "false"
       ENABLE_ADDITIONAL_FILES: "false"
+      # cgroup v2 compatibility: use per-process/thread limits instead of cgroup v1
+      ENABLE_PER_PROCESS_AND_THREAD_TIME_LIMIT: "true"
+      ENABLE_PER_PROCESS_AND_THREAD_MEMORY_LIMIT: "true"
     depends_on:
       postgres:
         condition: service_healthy
@@ -129,6 +132,9 @@ services:
       ENABLE_COMPILER_OPTIONS: "false"
       ENABLE_COMMAND_LINE_ARGUMENTS: "false"
       ENABLE_ADDITIONAL_FILES: "false"
+      # cgroup v2 compatibility: use per-process/thread limits instead of cgroup v1
+      ENABLE_PER_PROCESS_AND_THREAD_TIME_LIMIT: "true"
+      ENABLE_PER_PROCESS_AND_THREAD_MEMORY_LIMIT: "true"
     depends_on:
       - judge0
     networks:
@@ -145,16 +151,16 @@ services:
       COOKIES_SAMESITE: Lax
       COOKIES_KEYS: '["59761AB67FB5BA23BDD917B2F2E409394A848F50FA9CEB08860C73495339266E"]'
       DIRECTORY_USERS_FILE: /app/config/users.json
-      ISSUER: https://localhost:${PROXY_OIDC_HTTPS_PORT:-4443}
+      ISSUER: https://${PUBLIC_HOST:-localhost}:${PROXY_OIDC_HTTPS_PORT:-4443}
       NODE_ENV: development
       PORT: 8080
       PROXY: true
       POST_LOGOUT_REDIRECT_URIS: >-
-        https://localhost:${PROXY_HTTPS_PORT:-9443}/api/v1/auth/callback,
+        https://${PUBLIC_HOST:-localhost}:${PROXY_HTTPS_PORT:-9443}/api/v1/auth/callback,
         http://localhost:8080/api/v1/auth/callback,
         http://10.0.2.2:8080/api/v1/auth/callback
       REDIRECT_URIS: >-
-        https://localhost:${PROXY_HTTPS_PORT:-9443}/api/v1/auth/callback,
+        https://${PUBLIC_HOST:-localhost}:${PROXY_HTTPS_PORT:-9443}/api/v1/auth/callback,
         http://localhost:8080/api/v1/auth/callback,
         http://10.0.2.2:8080/api/v1/auth/callback
     volumes:
@@ -182,13 +188,14 @@ services:
       OIDC_ISSUER: http://oidc:8080
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-firefly}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-firefly-secret}
-      OIDC_REDIRECT_URI: https://localhost:${PROXY_HTTPS_PORT:-9443}/api/v1/auth/callback
+      OIDC_REDIRECT_URI: https://${PUBLIC_HOST:-localhost}:${PROXY_HTTPS_PORT:-9443}/api/v1/auth/callback
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
-      LLM_PROVIDER: ${LLM_PROVIDER:-lmstudio}
-      LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:1234}
-      CLIENT_ORIGIN: https://localhost:${PROXY_HTTPS_PORT:-9443}
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      LLM_BASE_URL: http://host.docker.internal:11434
+      LLM_MODEL: ${LLM_MODEL:-llama3.2:3b}
+      CLIENT_ORIGIN: https://${PUBLIC_HOST:-localhost}:${PROXY_HTTPS_PORT:-9443}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

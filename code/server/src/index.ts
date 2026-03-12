@@ -11,6 +11,7 @@ import curriculumRoutes from "./routes/curriculum.js";
 import executionRoutes from "./routes/execution.js";
 import masteryRoutes from "./routes/mastery.js";
 import llmRoutes from "./routes/llm.js";
+import analyticsRoutes from "./routes/analytics.js";
 import prisma from "./config/database.js";
 import redis from "./config/redis.js";
 
@@ -37,6 +38,7 @@ async function start() {
   await app.register(executionRoutes);
   await app.register(masteryRoutes);
   await app.register(llmRoutes);
+  await app.register(analyticsRoutes);
 
   // Global error handler
   app.setErrorHandler((error: Error & { statusCode?: number }, _request, reply) => {
