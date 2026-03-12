@@ -262,6 +262,16 @@ const executionRoutes: FastifyPluginAsync = async (fastify) => {
       const { language, sourceCode, stdin, exerciseId } = request.body;
       const userId = request.user.sub;
 
+      const MAX_SOURCE_BYTES = 64 * 1024; // 64 KB
+      if (Buffer.byteLength(sourceCode, "utf8") > MAX_SOURCE_BYTES) {
+        return reply.envelopeError(
+          "ValidationError",
+          "Source code exceeds the maximum allowed size of 64 KB.",
+          undefined,
+          400
+        );
+      }
+
       const languageId = LANGUAGE_IDS[language];
       if (!languageId) {
         return reply.envelopeError(

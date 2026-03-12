@@ -3,6 +3,14 @@ import sys, json, base64
 _trace_frames = []
 _step = 0
 _start = None
+_MAX_FRAMES = 500
+
+# Tracer-internal names that should never appear as user variables
+_TRACER_INTERNALS = frozenset({
+    '_trace_frames', '_step', '_start', '_MAX_FRAMES', '_TRACER_INTERNALS',
+    '_tracer', '_captured_stdout', '_captured_stderr', '_orig_stdout',
+    '_orig_stderr', '_builtin_names', '_user_code', '_user_error',
+})
 
 def _tracer(frame, event, arg):
     global _step, _start
@@ -12,12 +20,15 @@ def _tracer(frame, event, arg):
     if _start is None:
         _start = frame.f_lineno
 
+    if len(_trace_frames) >= _MAX_FRAMES:
+        return _tracer
+
     if event in ('line', 'call', 'return', 'exception'):
         _step += 1
-        # Collect locals (simple values only)
+        # Collect locals — skip tracer internals and builtins only
         local_vars = {}
         for k, v in frame.f_locals.items():
-            if k.startswith('_') or k in _builtin_names:
+            if k in _TRACER_INTERNALS or k in _builtin_names:
                 continue
             try:
                 local_vars[k] = repr(v)
@@ -32,7 +43,7 @@ def _tracer(frame, event, arg):
                 stack.append({
                     "funcName": f.f_code.co_name,
                     "line": f.f_lineno,
-                    "locals": {k: repr(v) for k, v in f.f_locals.items() if not k.startswith('_') and k not in _builtin_names}
+                    "locals": {k: repr(v) for k, v in f.f_locals.items() if k not in _TRACER_INTERNALS and k not in _builtin_names}
                 })
             f = f.f_back
         stack.reverse()
@@ -59,7 +70,7 @@ _orig_stderr = sys.stderr
 sys.stdout = _captured_stdout
 sys.stderr = _captured_stderr
 
-_builtin_names = set(dir()) | {'_builtin_names', '_user_code', '_user_error'}
+_builtin_names = set(dir()) | _TRACER_INTERNALS
 _user_error = None
 try:
     _user_code = base64.b64decode("__BASE64_CODE__").decode("utf-8")

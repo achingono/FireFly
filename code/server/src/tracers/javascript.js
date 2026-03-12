@@ -17,11 +17,9 @@ var _userLines = _userCode.split('\n');
 var _totalLines = _userLines.length;
 
 // Instrument the user code: prepend _t(lineNum) before each non-empty line
-// Also convert let/const to var so variables are accessible on the sandbox context
+// Also convert let/const to var so variables are accessible on the sandbox context.
+// Replacement is done line-by-line to avoid corrupting string literals.
 function _instrumentCode(code) {
-  // Convert let/const to var so variables land on the sandbox object
-  // This allows the tracer to read them via Object.keys(_sandbox)
-  code = code.replace(/\b(let|const)\s+/g, 'var ');
   var lines = code.split('\n');
   var result = [];
   for (var i = 0; i < lines.length; i++) {
@@ -37,8 +35,11 @@ function _instrumentCode(code) {
       result.push(line);
       continue;
     }
+    // Convert let/const to var only at the start of a statement (not inside strings)
+    // Match let/const followed by whitespace at the beginning of the trimmed line
+    var transformed = line.replace(/^(\s*)(let|const)(\s+)/, '$1var$3');
     // Prepend trace call before each executable line
-    result.push('_t(' + (i + 1) + '); ' + line);
+    result.push('_t(' + (i + 1) + '); ' + transformed);
   }
   return result.join('\n');
 }
@@ -93,6 +94,12 @@ var _sandbox = {
   RangeError: RangeError,
   SyntaxError: SyntaxError,
   ReferenceError: ReferenceError,
+  Promise: Promise,
+  Map: Map,
+  Set: Set,
+  WeakMap: WeakMap,
+  WeakSet: WeakSet,
+  Symbol: Symbol,
   undefined: undefined,
   NaN: NaN,
   Infinity: Infinity,
