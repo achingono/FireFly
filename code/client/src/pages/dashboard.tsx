@@ -52,7 +52,14 @@ export default function Dashboard() {
         const prereq = masteryById.get(prereqId);
         return prereq?.mastered;
       });
-    const status = c.mastered ? "mastered" : c.attempts > 0 ? "in_progress" : "not_started";
+    let status: string;
+    if (c.mastered) {
+      status = "mastered";
+    } else if (c.attempts > 0) {
+      status = "in_progress";
+    } else {
+      status = "not_started";
+    }
     return {
       conceptId: c.conceptId,
       concept: c.conceptName,

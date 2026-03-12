@@ -57,9 +57,8 @@ export default function StepperControls({
   return (
     <div className="border-t border-border bg-muted px-5 py-3">
       {/* Progress bar */}
-      <div
-        role="button"
-        tabIndex={0}
+      <button
+        type="button"
         aria-label="Seek to position"
         className="w-full h-1 rounded-full bg-white/8 mb-3 cursor-pointer relative group"
         onClick={e => {
@@ -80,7 +79,7 @@ export default function StepperControls({
           className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow transition-all opacity-0 group-hover:opacity-100"
           style={{ left: `calc(${progress}% - 6px)` }}
         />
-      </div>
+      </button>
 
       <div className="flex items-center gap-3">
         {/* Controls */}
