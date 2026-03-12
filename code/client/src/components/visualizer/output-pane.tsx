@@ -19,10 +19,10 @@ export default function OutputPane({ stdout, stderr, step, total }: OutputPanePr
         ) : (
           <>
             {lines.map((line: string, i: number) => (
-              <div key={i} className="text-green-400/90 leading-5">{line}</div>
+              <div key={`stdout-${i}-${line}`} className="text-green-400/90 leading-5">{line}</div>
             ))}
             {errLines.map((line: string, i: number) => (
-              <div key={i} className="flex items-start gap-1.5 text-rose-400 leading-5">
+              <div key={`stderr-${i}-${line}`} className="flex items-start gap-1.5 text-rose-400 leading-5">
                 <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
                 {line}
               </div>

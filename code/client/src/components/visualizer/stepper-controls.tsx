@@ -41,8 +41,8 @@ export default function StepperControls({
           return prev + 1;
         });
       }, 600);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
+    } else if (timerRef.current) {
+      clearInterval(timerRef.current);
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [isPlaying, totalFrames]);
@@ -51,15 +51,25 @@ export default function StepperControls({
   const event = currentFrame?.event ?? "line";
   const eventClass = EVENT_COLORS[event as keyof typeof EVENT_COLORS] ?? EVENT_COLORS.line;
 
+  const innerExplainLabel = isPro ? "Explain" : "Explain this step";
+  const explainLabel = isFun ? "What's happening?" : innerExplainLabel;
+
   return (
     <div className="border-t border-border bg-muted px-5 py-3">
       {/* Progress bar */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-label="Seek to position"
         className="w-full h-1 rounded-full bg-white/8 mb-3 cursor-pointer relative group"
         onClick={e => {
           const rect = e.currentTarget.getBoundingClientRect();
           const pct = (e.clientX - rect.left) / rect.width;
           onStep(Math.round(pct * (totalFrames - 1)));
+        }}
+        onKeyDown={e => {
+          if (e.key === "ArrowLeft") onStep((s: number) => Math.max(0, s - 1));
+          if (e.key === "ArrowRight") onStep((s: number) => Math.min(totalFrames - 1, s + 1));
         }}
       >
         <div
@@ -123,7 +133,7 @@ export default function StepperControls({
           className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/15 border border-violet-500/25 text-violet-300 text-xs font-semibold hover:bg-violet-500/25 transition-colors"
         >
           <Sparkles className="w-3.5 h-3.5" />
-          {isFun ? "What's happening?" : isPro ? "Explain" : "Explain this step"}
+          {explainLabel}
         </button>
       </div>
     </div>

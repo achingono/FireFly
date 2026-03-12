@@ -108,7 +108,7 @@ export default function Auth() {
               { icon: Sparkles, text: "Visual code stepper — see every line execute" },
               { icon: Code2, text: "Python, JavaScript, and more coming soon" },
             ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3 text-slate-500 text-xs">
+              <div key={item.text} className="flex items-center gap-3 text-slate-500 text-xs">
                 <item.icon className="w-4 h-4 flex-shrink-0 text-violet-500/60" />
                 <span>{item.text}</span>
               </div>

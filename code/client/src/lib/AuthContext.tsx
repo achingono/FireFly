@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { client, setToken, getToken, type User } from "@/api/client";
 
 // Re-export User as AuthUser for backward compat
@@ -86,7 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const value: AuthContextType = {
+  const value: AuthContextType = useMemo(() => ({
     isLoadingAuth,
     isLoadingPublicSettings: false,
     isAuthenticated: !!user,
@@ -103,7 +103,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       login: client.auth.login,
       register: client.auth.register,
     },
-  };
+  }), [isLoadingAuth, authError, user, navigateToLogin, logout, refreshUser]);
 
   return (
     <AuthContext.Provider value={value}>

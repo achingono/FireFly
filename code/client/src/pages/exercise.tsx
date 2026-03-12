@@ -290,13 +290,13 @@ interface ExerciseResult {
 }
 
 function ResultsPanel({ results, isPro }: { results: ExerciseResult; isPro: boolean }) {
+  const passedMessage = isPro ? "Execution complete \u2014 0 errors." : "Code executed successfully! \ud83c\udf89";
+  const failedMessage = isPro ? "Execution failed \u2014 see output." : "Execution failed \u2014 check the output below.";
   return (
     <div className="p-4">
       <div className={`flex items-center gap-2 mb-3 font-semibold ${results.status === "passed" ? "text-emerald-400" : "text-rose-400"}`}>
         {results.status === "passed" ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
-        {results.status === "passed"
-          ? (isPro ? "Execution complete \u2014 0 errors." : "Code executed successfully! \ud83c\udf89")
-          : (isPro ? "Execution failed \u2014 see output." : "Execution failed \u2014 check the output below.")}
+        {results.status === "passed" ? passedMessage : failedMessage}
       </div>
       {results.stdout && (
         <div className="mt-2">
@@ -316,7 +316,7 @@ function ResultsPanel({ results, isPro }: { results: ExerciseResult; isPro: bool
           <div className="space-y-1.5">
             {results.testResults.map((tr, i) => (
               <div
-                key={i}
+                key={`tr-${i}-${tr.input ?? ""}`}
                 className={`flex items-start gap-2 rounded-lg border p-2.5 text-xs font-mono ${
                   tr.passed ? "border-emerald-500/20 bg-emerald-500/5" : "border-rose-500/20 bg-rose-500/5"
                 }`}
@@ -526,6 +526,9 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
     );
   }
 
+  const FILE_EXT_MAP: Record<string, string> = { python: "py", javascript: "js" };
+  const fileExtension = FILE_EXT_MAP[exercise.language] ?? exercise.language;
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
@@ -575,7 +578,7 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
               <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Test Cases</h2>
               <div className="space-y-2">
                 {testCases.map((tc, i) => (
-                  <div key={i} className="rounded-xl border border-border bg-muted/30 p-3 text-xs font-mono">
+                  <div key={tc.description} className="rounded-xl border border-border bg-muted/30 p-3 text-xs font-mono">
                     <div className="text-slate-400 mb-1">{tc.description}</div>
                     <div>In: <span className="text-sky-400">{tc.input}</span></div>
                     <div>Out: <span className="text-emerald-400">{tc.expectedOutput}</span></div>
@@ -603,7 +606,7 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
                   className="mt-3 space-y-2"
                 >
                   {HINTS_GENERIC.slice(0, shownHint + 1).map((h, i) => (
-                    <div key={i} className="flex gap-2 text-sm text-slate-300 rounded-xl bg-amber-500/8 border border-amber-500/20 p-3">
+                    <div key={h.slice(0, 30)} className="flex gap-2 text-sm text-slate-300 rounded-xl bg-amber-500/8 border border-amber-500/20 p-3">
                       <span className="text-amber-400 shrink-0">💡</span>
                       <span>{h}</span>
                     </div>
@@ -647,7 +650,7 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex items-center gap-3 px-4 py-2 border-b border-border/50 bg-muted">
             <span className="text-xs text-slate-500 font-mono">
-              main.{exercise.language === "python" ? "py" : exercise.language === "javascript" ? "js" : exercise.language}
+              main.{fileExtension}
             </span>
           </div>
           <Editor

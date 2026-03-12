@@ -104,7 +104,7 @@ export default function Home() {
                         <div className="text-teal-300 text-[10px] mb-1">list #o1</div>
                         <div className="flex gap-1">
                           {[3,1,4,1,5].map((n, i) => (
-                            <div key={i} className={`w-6 h-6 rounded flex items-center justify-center text-[10px] ${i === 0 ? "bg-amber-500/30 text-amber-200" : "bg-white/5 text-slate-300"}`}>{n}</div>
+                            <div key={`${n}-${i}`} className={`w-6 h-6 rounded flex items-center justify-center text-[10px] ${i === 0 ? "bg-amber-500/30 text-amber-200" : "bg-white/5 text-slate-300"}`}>{n}</div>
                           ))}
                         </div>
                       </div>

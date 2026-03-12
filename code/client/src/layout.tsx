@@ -103,7 +103,14 @@ export default function Layout({ children, currentPageName }: LayoutProps) {
               </button>
               {themeMenuOpen && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setThemeMenuOpen(false)} />
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Close theme menu"
+                    className="fixed inset-0 z-40"
+                    onClick={() => setThemeMenuOpen(false)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setThemeMenuOpen(false); }}
+                  />
                   <div className="absolute right-0 top-full mt-1 z-50 bg-card border border-border rounded-lg shadow-lg py-1 min-w-[140px]">
                     {THEME_OPTIONS.map(opt => (
                       <button

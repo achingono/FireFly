@@ -23,7 +23,7 @@ export default function RecentActivity() {
         {MOCK_ACTIVITY.map((act, i) => {
           const cfg = ICONS[act.type as keyof typeof ICONS];
           return (
-            <div key={i} className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors">
+            <div key={act.title} className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors">
               <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${cfg.bg}`}>
                 <cfg.Icon className={`w-4 h-4 ${cfg.color}`} />
               </div>

@@ -57,7 +57,7 @@ function computeUnlockedSet(
     // All prerequisites must be mastered (score >= 0.80)
     const allPrereqsMet = concept.prerequisites.every((prereqId) => {
       const mastery = masteryMap.get(prereqId);
-      return mastery && mastery.mastered;
+      return mastery?.mastered;
     });
 
     if (allPrereqsMet) {
@@ -78,7 +78,7 @@ function getUnmetPrereqNames(
   return concept.prerequisites
     .filter((prereqId) => {
       const mastery = masteryMap.get(prereqId);
-      return !mastery || !mastery.mastered;
+      return !mastery?.mastered;
     })
     .map((prereqId) => conceptsById.get(prereqId)?.name ?? "Unknown")
     .filter(Boolean);

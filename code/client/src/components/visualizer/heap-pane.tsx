@@ -43,7 +43,7 @@ export default function HeapPane({ objects }: HeapPaneProps) {
                     <div className="flex flex-wrap gap-1 mt-1">
                       {obj.items.map((item: unknown, i: number) => (
                         <motion.div
-                          key={i}
+                          key={`${String(item)}-${i}`}
                           layout
                           className="min-w-[24px] h-6 px-1.5 rounded-md bg-white/8 border border-white/10 flex items-center justify-center text-[11px] font-mono text-slate-200"
                         >

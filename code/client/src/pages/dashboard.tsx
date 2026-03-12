@@ -50,13 +50,14 @@ export default function Dashboard() {
       c.prerequisites.length > 0 &&
       !c.prerequisites.every((prereqId) => {
         const prereq = masteryById.get(prereqId);
-        return prereq && prereq.mastered;
+        return prereq?.mastered;
       });
+    const status = c.mastered ? "mastered" : c.attempts > 0 ? "in_progress" : "not_started";
     return {
       conceptId: c.conceptId,
       concept: c.conceptName,
       masteryScore: Math.round(c.score * 100),
-      status: c.mastered ? "mastered" : c.attempts > 0 ? "in_progress" : "not_started",
+      status,
       locked,
     };
   });
@@ -69,6 +70,9 @@ export default function Dashboard() {
     );
   }
 
+  const displayNamePart = user?.displayName ? `, ${user.displayName.split(" ")[0]}` : "";
+  const welcomeName = user?.full_name ? `, ${user.full_name.split(" ")[0]}` : displayNamePart;
+
   return (
     <div className="min-h-screen bg-background text-foreground px-4 py-8">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -76,7 +80,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-black">
-              Welcome back{user?.full_name ? `, ${user.full_name.split(" ")[0]}` : user?.displayName ? `, ${user.displayName.split(" ")[0]}` : ""}! 👋
+              Welcome back{welcomeName}! 👋
             </h1>
             <p className="text-muted-foreground mt-1">
               {streak > 0 ? "Keep up your streak — you're on a roll." : "Start learning to build your streak!"}

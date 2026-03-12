@@ -55,6 +55,15 @@ export default function Onboarding() {
     else handleComplete();
   };
 
+  const buttonContent = step === "name" ? (
+    <>Let's Go!</>
+  ) : (
+    <>
+      Continue
+      <ArrowRight className="w-4 h-4" />
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,rgba(120,80,255,0.15),transparent)]" />
@@ -162,9 +171,10 @@ export default function Onboarding() {
 
                 {role === "student" && (
                   <div>
-                    <label className="block text-sm text-slate-400 mb-1.5">Your age (optional)</label>
+                    <label htmlFor="age-input" className="block text-sm text-slate-400 mb-1.5">Your age (optional)</label>
                     <input
                       type="number"
+                      id="age-input"
                       min={5}
                       max={99}
                       value={age ?? ""}
@@ -191,9 +201,10 @@ export default function Onboarding() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1.5">Display Name</label>
+                  <label htmlFor="display-name-input" className="block text-sm text-slate-400 mb-1.5">Display Name</label>
                   <input
                     type="text"
+                    id="display-name-input"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     placeholder="Your name or nickname"
@@ -215,16 +226,7 @@ export default function Onboarding() {
             disabled={loading}
             className="mt-6 w-full py-4 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 font-semibold text-white hover:opacity-90 transition-all shadow-lg shadow-violet-500/25 disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {loading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : step === "name" ? (
-              <>Let's Go!</>
-            ) : (
-              <>
-                Continue
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : buttonContent}
           </button>
         </div>
       </motion.div>

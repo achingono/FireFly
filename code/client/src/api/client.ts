@@ -188,7 +188,8 @@ function createEntityMethods(resource: string): EntityMethods {
     list: async (...args: unknown[]) => {
       const params = (args[0] as Record<string, string>) ?? {};
       const qs = new URLSearchParams(params).toString();
-      const path = `/${resource}${qs ? `?${qs}` : ""}`;
+      const suffix = qs ? `?${qs}` : "";
+      const path = `/${resource}${suffix}`;
       const envelope = await request<unknown[]>(path);
       return envelope.data ?? [];
     },

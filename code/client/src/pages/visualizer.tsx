@@ -512,11 +512,11 @@ export default function Visualizer() {
 
   // ─── Render ────────────────────────────────────────────────────
 
-  const subtitle = exerciseTitle
-    ? `— ${exerciseTitle}`
-    : jobIdParam
-      ? `— job ${jobIdParam.slice(0, 8)}…`
-      : "— sandbox";
+  const subtitleSuffix = jobIdParam ? `— job ${jobIdParam.slice(0, 8)}…` : "— sandbox";
+  const subtitle = exerciseTitle ? `— ${exerciseTitle}` : subtitleSuffix;
+
+  const runLabelInner = isPro ? "Execute" : "Run";
+  const runLabel = isFun ? "Let's Go!" : runLabelInner;
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -557,13 +557,13 @@ export default function Visualizer() {
           >
             {isRunning ? (
               <>
-                <span className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                <span className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />{" "}
                 Running…
               </>
             ) : (
               <>
                 <Play className="w-3.5 h-3.5" />
-                {isFun ? "Let's Go!" : isPro ? "Execute" : "Run"}
+                {runLabel}
               </>
             )}
           </button>

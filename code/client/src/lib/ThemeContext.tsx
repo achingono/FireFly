@@ -4,6 +4,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   type ReactNode,
 } from "react";
 import type { AgeProfile } from "@/types";
@@ -96,7 +97,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.classList.add(`theme-${mode}`);
 
     // Also set data-theme attribute for any CSS that uses it
-    root.setAttribute("data-theme", mode);
+    root.dataset.theme = mode;
 
     // Fun & Balanced use light-ish themes; Pro uses dark
     if (mode === "pro") {
@@ -111,13 +112,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     persistMode(newMode);
   }, []);
 
-  const value: ThemeContextType = {
+  const value: ThemeContextType = useMemo(() => ({
     mode,
     setMode,
     isFun: mode === "fun",
     isBalanced: mode === "balanced",
     isPro: mode === "pro",
-  };
+  }), [mode, setMode]);
 
   return (
     <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>

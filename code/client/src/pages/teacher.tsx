@@ -28,7 +28,6 @@ const STATUS_CONFIG = {
 
 export default function TeacherDashboard() {
   const [students] = useState(MOCK_STUDENTS);
-  const [selected, setSelected] = useState<string | null>(null);
   const [loadingInsight, setLoadingInsight] = useState(false);
   const [insight, setInsight] = useState<string | null>(null);
   const [tab, setTab] = useState("overview");
@@ -138,9 +137,11 @@ Provide a brief, actionable 2-3 sentence teaching insight for the teacher. Focus
                     contentStyle={{ background: "#111118", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "#e2e8f0" }}
                   />
                   <Bar dataKey="class_avg" radius={[6, 6, 0, 0]}>
-                    {MASTERY_DATA.map((entry, i) => (
-                      <Cell key={i} fill={entry.class_avg >= 70 ? "#10b981" : entry.class_avg >= 40 ? "#f59e0b" : "#f43f5e"} />
-                    ))}
+                    {MASTERY_DATA.map((entry) => {
+                      const midFill = entry.class_avg >= 40 ? "#f59e0b" : "#f43f5e";
+                      const cellFill = entry.class_avg >= 70 ? "#10b981" : midFill;
+                      return <Cell key={entry.concept} fill={cellFill} />;
+                    })}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>

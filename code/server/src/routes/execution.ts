@@ -278,6 +278,35 @@ function extractTraceAndStdout(
   return { trace: null, userStdout: result.stdout, userStderr: result.stderr };
 }
 
+function getWrappedSource(language: string, sourceCode: string): string {
+  if (language === "python") return wrapWithTracer(sourceCode);
+  if (language === "javascript") return wrapWithJsTracer(sourceCode);
+  return sourceCode;
+}
+
+function logJudge0Result(fastify: any, language: string, finalSource: string, sourceCode: string, result: Judge0Result): void {
+  if (language === "python" || language === "javascript") {
+    fastify.log.debug(`Wrapped ${language} code length: ${finalSource.length}, original: ${sourceCode.length}`);
+  }
+  fastify.log.info(`Judge0 result: status.id=${result.status.id} (${result.status.description}), exit=${result.exit_code}, stdout_len=${result.stdout?.length ?? 0}, stderr_len=${result.stderr?.length ?? 0}, compile_len=${result.compile_output?.length ?? 0}`);
+  if (result.stdout) fastify.log.debug(`Judge0 stdout: ${result.stdout.substring(0, 500)}`);
+  if (result.stderr) fastify.log.debug(`Judge0 stderr: ${result.stderr.substring(0, 500)}`);
+  if (result.compile_output) fastify.log.debug(`Judge0 compile_output: ${result.compile_output.substring(0, 500)}`);
+}
+
+function buildJobData(
+  result: Judge0Result,
+  status: "completed" | "failed" | "timeout",
+  userStdout: string | null,
+  userStderr: string | null,
+  statusMessage: string,
+  trace: TraceOutput | null,
+) {
+  const stderr = userStderr ?? result.compile_output ?? (statusMessage || null);
+  const durationMs = result.time ? Math.round(parseFloat(result.time) * 1000) : null;
+  return { status, stdout: userStdout, stderr, exitCode: result.exit_code, trace: trace ? JSON.parse(JSON.stringify(trace)) : null, durationMs, memoryKb: result.memory };
+}
+
 async function runTestsAndFinalizeStatus(
   exercise: { testCases: unknown } | null,
   status: "completed" | "failed" | "timeout",
@@ -351,13 +380,8 @@ const executionRoutes: FastifyPluginAsync = async (fastify) => {
         }
       }
 
-      // Wrap with tracer for supported languages
-      const finalSource =
-        language === "python" ? wrapWithTracer(sourceCode) :
-        language === "javascript" ? wrapWithJsTracer(sourceCode) :
-        sourceCode;
+      const finalSource = getWrappedSource(language, sourceCode);
 
-      // Create execution job in DB
       const job = await prisma.executionJob.create({
         data: {
           userId,
@@ -370,73 +394,39 @@ const executionRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       try {
-        // Log the wrapped code for debugging
-        if (language === "python") {
-          fastify.log.debug(`Wrapped Python code length: ${finalSource.length}, original: ${sourceCode.length}`);
-        }
-        if (language === "javascript") {
-          fastify.log.debug(`Wrapped JS code length: ${finalSource.length}, original: ${sourceCode.length}`);
-        }
-        
-        // Submit to Judge0
         const token = await submitToJudge0({
           source_code: finalSource,
           language_id: languageId,
           stdin: stdin ?? undefined,
           cpu_time_limit: 5,
-          memory_limit: 128000, // 128 MB
+          memory_limit: 128000,
           wall_time_limit: 10,
         });
 
-        // Update job with Judge0 token
         await prisma.executionJob.update({
           where: { id: job.id },
           data: { judge0Token: token, status: "running" },
         });
 
-        // Poll for result
         const result = await pollJudge0(token);
-        
-        // Log full Judge0 response for debugging
-        fastify.log.info(`Judge0 result: status.id=${result.status.id} (${result.status.description}), exit=${result.exit_code}, stdout_len=${result.stdout?.length ?? 0}, stderr_len=${result.stderr?.length ?? 0}, compile_len=${result.compile_output?.length ?? 0}`);
-        if (result.stdout) fastify.log.debug(`Judge0 stdout: ${result.stdout.substring(0, 500)}`);
-        if (result.stderr) fastify.log.debug(`Judge0 stderr: ${result.stderr.substring(0, 500)}`);
-        if (result.compile_output) fastify.log.debug(`Judge0 compile_output: ${result.compile_output.substring(0, 500)}`);
+        logJudge0Result(fastify, language, finalSource, sourceCode, result);
 
-        // Determine status
         const { status: resolvedStatus, statusMessage } = determineJobStatus(result);
-        let status = resolvedStatus;
-
-        // Parse trace from stdout (Python and JavaScript)
         const { trace, userStdout, userStderr } = extractTraceAndStdout(language, result);
-
-        // Evaluate test cases if exercise is provided and execution succeeded
         const { testResults, finalStatus } = await runTestsAndFinalizeStatus(
-          exercise, status, sourceCode, userStdout, language, languageId, fastify
+          exercise, resolvedStatus, sourceCode, userStdout, language, languageId, fastify
         );
-        status = finalStatus;
 
-        // Update job
-        await prisma.executionJob.update({
-          where: { id: job.id },
-          data: {
-            status,
-            stdout: userStdout,
-            stderr: userStderr ?? result.compile_output ?? (statusMessage || null),
-            exitCode: result.exit_code,
-            trace: trace ? JSON.parse(JSON.stringify(trace)) : null,
-            durationMs: result.time ? Math.round(parseFloat(result.time) * 1000) : null,
-            memoryKb: result.memory,
-          },
-        });
+        const jobData = buildJobData(result, finalStatus, userStdout, userStderr, statusMessage, trace);
+        await prisma.executionJob.update({ where: { id: job.id }, data: jobData });
 
         return reply.status(201).envelope({
           jobId: job.id,
-          status,
+          status: finalStatus,
           stdout: userStdout,
-          stderr: userStderr ?? result.compile_output ?? (statusMessage || null),
+          stderr: jobData.stderr,
           trace,
-          durationMs: result.time ? Math.round(parseFloat(result.time) * 1000) : null,
+          durationMs: jobData.durationMs,
           testResults,
           allTestsPassed: testResults ? testResults.every(tr => tr.passed) : null,
         });
