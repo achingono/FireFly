@@ -22,10 +22,15 @@ export async function callLLM(
 ): Promise<string> {
   const { maxTokens = 512, temperature = 0.7 } = options;
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120_000);
+
+  try {
   if (env.LLM_PROVIDER === "ollama") {
     const response = await fetch(`${env.LLM_BASE_URL}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
       body: JSON.stringify({
         model: env.LLM_MODEL,
         messages,
@@ -51,6 +56,7 @@ export async function callLLM(
     const response = await fetch(`${env.LLM_BASE_URL}/v1/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
       body: JSON.stringify({
         model: env.LLM_MODEL,
         messages,
@@ -69,6 +75,9 @@ export async function callLLM(
     };
 
     return data.choices?.[0]?.message?.content ?? "";
+  }
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
