@@ -64,12 +64,12 @@ Provide a brief, actionable 2-3 sentence teaching insight for the teacher. Focus
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-black">Teacher Dashboard</h1>
-            <p className="text-slate-500 mt-1">CS101 — Introduction to Programming</p>
+            <p className="text-muted-foreground mt-1">CS101 — Introduction to Programming</p>
           </div>
           <button
             onClick={getClassInsight}
             disabled={loadingInsight}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-sm font-semibold disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold disabled:opacity-50 transition-colors"
           >
             {loadingInsight ? <Loader2 className="w-4 h-4 animate-spin" /> : "✨"}
             AI Class Insight
@@ -80,9 +80,9 @@ Provide a brief, actionable 2-3 sentence teaching insight for the teacher. Focus
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-4 rounded-2xl bg-violet-500/10 border border-violet-500/25 text-sm text-slate-300"
+            className="mb-6 p-4 rounded-2xl bg-violet-500/10 border border-violet-500/25 text-sm text-foreground/80"
           >
-            <span className="text-violet-300 font-semibold block mb-1">✨ AI Insight</span>
+            <span className="text-primary font-semibold block mb-1">✨ AI Insight</span>
             {insight}
           </motion.div>
         )}
@@ -100,24 +100,24 @@ Provide a brief, actionable 2-3 sentence teaching insight for the teacher. Focus
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.07 }}
-              className="rounded-2xl border border-white/8 bg-white/3 p-5"
+              className="rounded-2xl border border-border bg-card p-5"
             >
               <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center mb-3`}>
                 <stat.icon className="w-5 h-5 text-white" />
               </div>
               <div className="text-2xl font-bold">{stat.value}</div>
-              <div className="text-sm text-slate-500">{stat.label}</div>
+              <div className="text-sm text-muted-foreground">{stat.label}</div>
             </motion.div>
           ))}
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 p-1 rounded-xl bg-black/30 w-fit mb-6">
+        <div className="flex gap-1 p-1 rounded-xl bg-muted w-fit mb-6">
           {["overview", "students", "analytics"].map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-all ${tab === t ? "bg-violet-600 text-white" : "text-slate-400 hover:text-white"}`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-all ${tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
             >
               {t}
             </button>
@@ -127,7 +127,7 @@ Provide a brief, actionable 2-3 sentence teaching insight for the teacher. Focus
         {tab === "overview" && (
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Mastery bar chart */}
-            <div className="rounded-2xl border border-white/8 bg-white/3 p-6">
+            <div className="rounded-2xl border border-border bg-card p-6">
               <h2 className="font-semibold mb-4">Class Mastery by Concept</h2>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={MASTERY_DATA} barGap={4}>
@@ -148,7 +148,7 @@ Provide a brief, actionable 2-3 sentence teaching insight for the teacher. Focus
             </div>
 
             {/* Students needing help */}
-            <div className="rounded-2xl border border-white/8 bg-white/3 p-6">
+            <div className="rounded-2xl border border-border bg-card p-6">
               <h2 className="font-semibold mb-4">Students Needing Attention</h2>
               <div className="space-y-3">
                 {students.filter(s => s.status === "needs_help").map(s => (
@@ -172,23 +172,23 @@ Provide a brief, actionable 2-3 sentence teaching insight for the teacher. Focus
         )}
 
         {tab === "students" && (
-          <div className="rounded-2xl border border-white/8 overflow-hidden">
+          <div className="rounded-2xl border border-border overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/8 bg-white/3">
-                  <th className="text-left px-5 py-3.5 text-slate-400 font-medium">Student</th>
-                  <th className="text-left px-5 py-3.5 text-slate-400 font-medium">Level / XP</th>
-                  <th className="text-left px-5 py-3.5 text-slate-400 font-medium">Mastery</th>
-                  <th className="text-left px-5 py-3.5 text-slate-400 font-medium">Streak</th>
-                  <th className="text-left px-5 py-3.5 text-slate-400 font-medium">Status</th>
-                  <th className="text-left px-5 py-3.5 text-slate-400 font-medium">Last Activity</th>
+                <tr className="border-b border-border bg-muted">
+                  <th className="text-left px-5 py-3.5 text-muted-foreground font-medium">Student</th>
+                  <th className="text-left px-5 py-3.5 text-muted-foreground font-medium">Level / XP</th>
+                  <th className="text-left px-5 py-3.5 text-muted-foreground font-medium">Mastery</th>
+                  <th className="text-left px-5 py-3.5 text-muted-foreground font-medium">Streak</th>
+                  <th className="text-left px-5 py-3.5 text-muted-foreground font-medium">Status</th>
+                  <th className="text-left px-5 py-3.5 text-muted-foreground font-medium">Last Activity</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-border">
                 {students.map(s => {
                   const sc = STATUS_CONFIG[s.status as keyof typeof STATUS_CONFIG];
                   return (
-                    <tr key={s.id} className="hover:bg-white/3 transition-colors">
+                    <tr key={s.id} className="hover:bg-muted/50 transition-colors">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-violet-500/20 flex items-center justify-center text-xs font-bold">
@@ -196,29 +196,29 @@ Provide a brief, actionable 2-3 sentence teaching insight for the teacher. Focus
                           </div>
                           <div>
                             <div className="font-medium">{s.full_name}</div>
-                            <div className="text-xs text-slate-600">{s.email}</div>
+                            <div className="text-xs text-muted-foreground">{s.email}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-5 py-4">
                         <span className="font-semibold">Lv.{s.level}</span>
-                        <span className="text-slate-500 ml-1 text-xs">· {s.xp.toLocaleString()} XP</span>
+                        <span className="text-muted-foreground ml-1 text-xs">· {s.xp.toLocaleString()} XP</span>
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-2">
-                          <div className="w-20 h-1.5 rounded-full bg-white/8">
+                          <div className="w-20 h-1.5 rounded-full bg-muted">
                             <div className="h-full rounded-full bg-violet-500" style={{ width: `${s.masteryScore}%` }} />
                           </div>
                           <span className="text-xs">{s.masteryScore}%</span>
                         </div>
                       </td>
                       <td className="px-5 py-4">
-                        <span className={s.streak > 0 ? "text-amber-400" : "text-slate-600"}>{s.streak > 0 ? `🔥 ${s.streak}d` : "—"}</span>
+                        <span className={s.streak > 0 ? "text-amber-500" : "text-muted-foreground"}>{s.streak > 0 ? `🔥 ${s.streak}d` : "—"}</span>
                       </td>
                       <td className="px-5 py-4">
                         <span className={`px-2 py-0.5 rounded-full text-xs border ${sc.bg} ${sc.color}`}>{sc.label}</span>
                       </td>
-                      <td className="px-5 py-4 text-slate-500 text-xs">{s.recentActivity}</td>
+                      <td className="px-5 py-4 text-muted-foreground text-xs">{s.recentActivity}</td>
                     </tr>
                   );
                 })}
@@ -228,7 +228,7 @@ Provide a brief, actionable 2-3 sentence teaching insight for the teacher. Focus
         )}
 
         {tab === "analytics" && (
-          <div className="rounded-2xl border border-white/8 bg-white/3 p-8 text-center text-slate-500">
+          <div className="rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground">
             <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-20" />
             <p>Detailed analytics — coming soon</p>
           </div>

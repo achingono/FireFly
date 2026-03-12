@@ -51,10 +51,10 @@ export default function Auth() {
 
   if (isLoadingAuth || processing) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="w-8 h-8 animate-spin text-violet-500 mx-auto" />
-          <p className="text-slate-400 text-sm">
+          <p className="text-muted-foreground text-sm">
             {processing ? "Signing you in..." : "Loading..."}
           </p>
         </div>
@@ -63,7 +63,7 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,rgba(120,80,255,0.15),transparent)]" />
 
       <motion.div

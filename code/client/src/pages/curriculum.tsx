@@ -109,25 +109,25 @@ export default function Curriculum() {
         {/* Header */}
         <div className="mb-10">
           <h1 className="text-4xl font-black mb-2">Curriculum</h1>
-          <p className="text-slate-500 text-lg">Master programming concepts step by step</p>
+          <p className="text-muted-foreground text-lg">Master programming concepts step by step</p>
         </div>
 
         {/* Search & Filter bar */}
         <div className="flex flex-col sm:flex-row gap-3 mb-8">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search concepts…"
-              className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-violet-500"
+              className="w-full pl-10 pr-4 py-3 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
             />
           </div>
           <select
             value={filter.difficulty}
             onChange={e => setFilter(p => ({ ...p, difficulty: e.target.value }))}
-            className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-slate-300 focus:outline-none"
+            className="px-4 py-3 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary"
           >
             <option value="all">All Levels</option>
             <option value="beginner">Beginner</option>
@@ -140,13 +140,13 @@ export default function Curriculum() {
         {loading && (
           <div className="text-center py-24">
             <Loader2 className="w-8 h-8 mx-auto mb-4 text-violet-400 animate-spin" />
-            <p className="text-slate-500">Loading curriculum…</p>
+            <p className="text-muted-foreground">Loading curriculum…</p>
           </div>
         )}
 
         {/* Error */}
         {error && !loading && (
-          <div className="text-center py-24 text-slate-500">
+          <div className="text-center py-24 text-muted-foreground">
             <Layers className="w-12 h-12 mx-auto mb-4 opacity-30" />
             <p>{error}</p>
           </div>
@@ -170,7 +170,7 @@ export default function Curriculum() {
         )}
 
         {!loading && !error && filtered.length === 0 && (
-          <div className="text-center py-24 text-slate-600">
+          <div className="text-center py-24 text-muted-foreground">
             <Layers className="w-12 h-12 mx-auto mb-4 opacity-30" />
             <p>{concepts.length === 0 ? "No concepts found. Seed the database to get started." : "No concepts match your filters"}</p>
           </div>

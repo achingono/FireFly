@@ -28,29 +28,29 @@ export default function Home() {
           transition={{ duration: 0.7, ease: "easeOut" }}
           className="relative max-w-4xl mx-auto"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-300 text-sm mb-8">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-500 text-sm mb-8">
             <Zap className="w-3.5 h-3.5" />
             AI-Powered • Visual • Adaptive
           </div>
           <h1 className="text-6xl md:text-7xl font-black tracking-tight mb-6 leading-none">
             Learn to code<br />
-            <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-pink-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-pink-500 bg-clip-text text-transparent">
               by seeing it live
             </span>
           </h1>
-          <p className="text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
             FireFly visualizes every step of your code — stack frames, heap objects, variable changes — with AI explanations tailored to your age.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to={createPageUrl("Visualizer")}>
-              <button className="group flex items-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 font-semibold text-lg hover:opacity-90 transition-all shadow-lg shadow-violet-500/25">
+              <button className="group flex items-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-semibold text-lg hover:opacity-90 transition-all shadow-lg shadow-violet-500/25">
                 <Play className="w-5 h-5" />
                 Try the Visualizer
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
             </Link>
             <Link to={createPageUrl("Curriculum")}>
-              <button className="flex items-center gap-2 px-8 py-4 rounded-2xl border border-white/10 bg-white/5 font-semibold text-lg hover:bg-white/10 transition-all">
+              <button className="flex items-center gap-2 px-8 py-4 rounded-2xl border border-border bg-secondary text-foreground font-semibold text-lg hover:bg-accent transition-all">
                 <BookOpen className="w-5 h-5" />
                 Explore Curriculum
               </button>
@@ -128,7 +128,7 @@ export default function Home() {
       <section className="py-24 px-6">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-4xl font-bold text-center mb-4">Everything a young coder needs</h2>
-          <p className="text-slate-500 text-center mb-16 text-lg">One platform from first loop to first algorithm</p>
+          <p className="text-muted-foreground text-center mb-16 text-lg">One platform from first loop to first algorithm</p>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {FEATURES.map((f, i) => (
               <motion.div
@@ -136,13 +136,13 @@ export default function Home() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
-                className="rounded-2xl border border-white/8 bg-white/3 p-6 hover:bg-white/6 transition-all group"
+                className="rounded-2xl border border-border bg-card p-6 hover:bg-accent transition-all group"
               >
                 <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${f.color} flex items-center justify-center mb-4 shadow-lg`}>
                   <f.icon className="w-6 h-6 text-white" />
                 </div>
                 <h3 className="font-semibold text-lg mb-2">{f.title}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed">{f.desc}</p>
+                <p className="text-muted-foreground text-sm leading-relaxed">{f.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -153,7 +153,7 @@ export default function Home() {
       <section className="py-24 px-6 bg-white/2">
         <div className="max-w-5xl mx-auto text-center">
           <h2 className="text-4xl font-bold mb-4">Built for every age</h2>
-          <p className="text-slate-500 mb-16 text-lg">Three adaptive learning environments</p>
+          <p className="text-muted-foreground mb-16 text-lg">Three adaptive learning environments</p>
           <div className="grid md:grid-cols-3 gap-6">
             {AGE_THEMES.map((t, i) => (
               <motion.div
@@ -178,9 +178,9 @@ export default function Home() {
       <section className="py-32 px-6 text-center">
         <div className="max-w-2xl mx-auto">
           <h2 className="text-5xl font-black mb-6">Start learning today</h2>
-          <p className="text-slate-400 text-lg mb-10">Free for students. Powerful for teachers.</p>
+          <p className="text-muted-foreground text-lg mb-10">Free for students. Powerful for teachers.</p>
           <Link to={createPageUrl("Auth")}>
-            <button className="px-10 py-5 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 font-bold text-xl hover:opacity-90 transition-all shadow-2xl shadow-violet-500/30">
+            <button className="px-10 py-5 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-bold text-xl hover:opacity-90 transition-all shadow-2xl shadow-violet-500/30">
               Get Started Free →
             </button>
           </Link>
