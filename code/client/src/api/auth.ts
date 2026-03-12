@@ -22,7 +22,6 @@ export const auth = {
   },
 
   me: async (): Promise<User | null> => {
-    if (!getToken()) return null;
     try {
       const envelope = await request<User>("/auth/me");
       return envelope.data ?? null;

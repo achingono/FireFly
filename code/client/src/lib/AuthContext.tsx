@@ -78,12 +78,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const refreshUser = useCallback(async () => {
-    try {
-      const u = await client.auth.me();
-      setUser(u);
-    } catch {
-      // silent
-    }
+    const u = await client.auth.me();
+    if (!u) throw new Error("Authentication failed");
+    setUser(u);
   }, []);
 
   const value: AuthContextType = useMemo(() => ({
