@@ -8,7 +8,7 @@ const envSchema = z.object({
     .default("development"),
   DATABASE_URL: z
     .string()
-    .default("postgresql://firefly:firefly_dev@localhost:5432/firefly"),
+    .default("postgresql://firefly@localhost:5432/firefly"),
   REDIS_URL: z.string().default("redis://localhost:6379"),
   JUDGE0_URL: z.string().default("http://localhost:2358"),
   OIDC_ISSUER: z.string().default("http://localhost:8080"),

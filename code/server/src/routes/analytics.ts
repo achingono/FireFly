@@ -1,6 +1,57 @@
 import { FastifyPluginAsync } from "fastify";
 import prisma from "../config/database.js";
 
+async function buildStudentSummary(
+  student: { id: string; displayName: string | null; email: string; age: number | null },
+  twoDaysAgo: Date
+) {
+  const studentMastery = await prisma.masteryRecord.findMany({
+    where: { userId: student.id },
+    select: { score: true, lastAttemptAt: true },
+  });
+
+  const avgMastery =
+    studentMastery.length > 0
+      ? studentMastery.reduce((sum, m) => sum + m.score, 0) / studentMastery.length
+      : 0;
+
+  const recentActivity = studentMastery.find((m) => m.lastAttemptAt && m.lastAttemptAt > twoDaysAgo);
+
+  let status: string;
+  if (avgMastery >= 0.8) {
+    status = "excelling";
+  } else if (avgMastery < 0.5 || !recentActivity) {
+    status = "needs_help";
+  } else {
+    status = "on_track";
+  }
+
+  return {
+    id: student.id,
+    fullName: student.displayName,
+    email: student.email,
+    age: student.age,
+    masteryScore: Math.round(avgMastery * 100),
+    status,
+    recentActivity: recentActivity ? "Active" : "No recent activity",
+    streak: 0,
+  };
+}
+
+function aggregateErrorPatterns(errorJobs: Array<{ stderr: string | null }>): Record<string, number> {
+  const keywords = ["nameerror", "typeerror", "syntaxerror", "indexerror", "valueerror", "keyerror", "attributeerror"];
+  const patterns: Record<string, number> = {};
+  for (const job of errorJobs) {
+    const error = job.stderr?.toLowerCase() || "";
+    for (const keyword of keywords) {
+      if (error.includes(keyword)) {
+        patterns[keyword] = (patterns[keyword] || 0) + 1;
+      }
+    }
+  }
+  return patterns;
+}
+
 const analyticsRoutes: FastifyPluginAsync = async (app) => {
   // GET /api/v1/admin/analytics — Teacher dashboard analytics
   app.get("/api/v1/admin/analytics", { preHandler: [app.requireRole("teacher", "admin")] }, async (request, reply) => {
@@ -70,39 +121,7 @@ const analyticsRoutes: FastifyPluginAsync = async (app) => {
     const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
 
     const studentsNeedingAttention = await Promise.all(
-      students.map(async (student) => {
-        const studentMastery = await prisma.masteryRecord.findMany({
-          where: { userId: student.id },
-          select: { score: true, lastAttemptAt: true },
-        });
-
-        const avgMastery =
-          studentMastery.length > 0
-            ? studentMastery.reduce((sum, m) => sum + m.score, 0) / studentMastery.length
-            : 0;
-
-        const recentActivity = studentMastery.find((m) => m.lastAttemptAt && m.lastAttemptAt > twoDaysAgo);
-
-        const status =
-          avgMastery >= 0.8
-            ? "excelling"
-            : avgMastery < 0.5
-              ? "needs_help"
-              : recentActivity
-                ? "on_track"
-                : "needs_help";
-
-        return {
-          id: student.id,
-          fullName: student.displayName,
-          email: student.email,
-          age: student.age,
-          masteryScore: Math.round(avgMastery * 100),
-          status,
-          recentActivity: recentActivity ? "Active" : "No recent activity",
-          streak: 0, // Would need session history to calculate
-        };
-      })
+      students.map((student) => buildStudentSummary(student, twoDaysAgo))
     );
 
     // Sort by status (needs_help first, then on_track, then excelling)
@@ -124,18 +143,7 @@ const analyticsRoutes: FastifyPluginAsync = async (app) => {
       take: 100,
     });
 
-    // Count error patterns
-    const errorPatterns: Record<string, number> = {};
-    for (const job of errorJobs) {
-      const error = job.stderr?.toLowerCase() || "";
-      // Extract common error keywords
-      const keywords = ["nameerror", "typeerror", "syntaxerror", "indexerror", "valueerror", "keyerror", "attributeerror"];
-      for (const keyword of keywords) {
-        if (error.includes(keyword)) {
-          errorPatterns[keyword] = (errorPatterns[keyword] || 0) + 1;
-        }
-      }
-    }
+    const errorPatterns = aggregateErrorPatterns(errorJobs);
 
     // Get top 5 error patterns
     const topErrors = Object.entries(errorPatterns)

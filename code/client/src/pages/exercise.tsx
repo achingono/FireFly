@@ -50,6 +50,44 @@ export default function ExercisePage() {
   return <ExerciseList conceptId={conceptId} />;
 }
 
+// ─── Helpers ────────────────────────────────────────────────────
+
+async function buildMasteryMap(userId: string): Promise<Map<string, MasteryConcept>> {
+  const mastery = await progress.masteryMap(userId);
+  const map = new Map<string, MasteryConcept>();
+  for (const c of mastery?.concepts ?? []) {
+    map.set(c.conceptId, c);
+  }
+  return map;
+}
+
+async function resolveUnmetPrereqNames(
+  prereqs: string[],
+  masteryById: Map<string, MasteryConcept>
+): Promise<string[]> {
+  const unmetIds = prereqs.filter((id) => !masteryById.get(id)?.mastered);
+  if (unmetIds.length === 0) return [];
+  const allConcepts = await client.entities.concepts.list() as Array<{ id: string; name: string }>;
+  const conceptsById = new Map(allConcepts.map((c) => [c.id, c]));
+  return unmetIds.map((id) => conceptsById.get(id)?.name ?? "Unknown");
+}
+
+async function checkPrerequisites(
+  prereqs: string[],
+  userId: string
+): Promise<{ locked: boolean; unmetNames: string[] }> {
+  if (prereqs.length === 0) return { locked: false, unmetNames: [] };
+  try {
+    const masteryById = await buildMasteryMap(userId);
+    const allMet = prereqs.every((id) => masteryById.get(id)?.mastered);
+    if (allMet) return { locked: false, unmetNames: [] };
+    const unmetNames = await resolveUnmetPrereqNames(prereqs, masteryById);
+    return { locked: true, unmetNames };
+  } catch {
+    return { locked: false, unmetNames: [] };
+  }
+}
+
 // ─── Exercise List ──────────────────────────────────────────────
 
 function ExerciseList({ conceptId }: { conceptId: string | null }) {
@@ -68,58 +106,29 @@ function ExerciseList({ conceptId }: { conceptId: string | null }) {
       setIsLocked(false);
       setUnmetPrereqs([]);
       try {
-        if (conceptId) {
-          // Fetch concept detail for name and prerequisites
-          const concept = await client.entities.concepts.get(conceptId) as Record<string, unknown> | null;
-          if (concept) {
-            setConceptName(concept.name as string);
-          }
-
-          // Check if concept is locked (prerequisites not mastered)
-          if (user?.id && concept) {
-            const prereqs = (concept.prerequisites ?? []) as string[];
-            if (prereqs.length > 0) {
-              try {
-                const mastery = await progress.masteryMap(user.id);
-                if (mastery?.concepts) {
-                  const masteryById = new Map<string, MasteryConcept>();
-                  for (const c of mastery.concepts) {
-                    masteryById.set(c.conceptId, c);
-                  }
-
-                  const allPrereqsMet = prereqs.every((prereqId) => {
-                    const m = masteryById.get(prereqId);
-                    return m && m.mastered;
-                  });
-
-                  if (!allPrereqsMet) {
-                    // Find unmet prerequisite names
-                    const allConcepts = await client.entities.concepts.list() as Array<{ id: string; name: string }>;
-                    const conceptsById = new Map(allConcepts.map((c) => [c.id, c]));
-                    const names = prereqs
-                      .filter((prereqId) => {
-                        const m = masteryById.get(prereqId);
-                        return !m || !m.mastered;
-                      })
-                      .map((prereqId) => conceptsById.get(prereqId)?.name ?? "Unknown");
-                    setIsLocked(true);
-                    setUnmetPrereqs(names);
-                    setLoading(false);
-                    return;
-                  }
-                }
-              } catch {
-                // Mastery data unavailable — allow access (graceful degradation)
-              }
-            }
-          }
-
-          const data = await client.entities.exercises.list({ conceptId }) as Exercise[];
-          setExercises(data);
-        } else {
+        if (!conceptId) {
           const data = await client.entities.exercises.list() as Exercise[];
           setExercises(data);
+          return;
         }
+
+        const concept = await client.entities.concepts.get(conceptId) as Record<string, unknown> | null;
+        if (concept) {
+          setConceptName(concept.name as string);
+        }
+
+        if (user?.id && concept) {
+          const prereqs = (concept.prerequisites ?? []) as string[];
+          const { locked, unmetNames } = await checkPrerequisites(prereqs, user.id);
+          if (locked) {
+            setIsLocked(true);
+            setUnmetPrereqs(unmetNames);
+            return;
+          }
+        }
+
+        const data = await client.entities.exercises.list({ conceptId }) as Exercise[];
+        setExercises(data);
       } catch (err) {
         console.error("Failed to load exercises:", err);
         setError("Failed to load exercises. Is the server running?");
@@ -248,6 +257,148 @@ function ExerciseList({ conceptId }: { conceptId: string | null }) {
   );
 }
 
+// ─── Exercise result helpers ─────────────────────────────────────
+
+async function trySubmitMastery(
+  userId: string,
+  conceptId: string,
+  exerciseId: string,
+  correct: boolean
+): Promise<MasteryUpdateResponse | null> {
+  try {
+    const result = await progress.submit(userId, { conceptId, correct, exerciseId });
+    return result ?? null;
+  } catch (err) {
+    console.error("Failed to submit mastery update:", err);
+    return null;
+  }
+}
+
+interface ExerciseResult {
+  status: string;
+  stdout: string | null;
+  stderr: string | null;
+  jobId: string | null;
+  testResults?: Array<{
+    input: string;
+    expectedOutput: string;
+    actualOutput: string;
+    passed: boolean;
+    error?: string;
+  }> | null;
+  allTestsPassed?: boolean | null;
+}
+
+function ResultsPanel({ results, isPro }: { results: ExerciseResult; isPro: boolean }) {
+  return (
+    <div className="p-4">
+      <div className={`flex items-center gap-2 mb-3 font-semibold ${results.status === "passed" ? "text-emerald-400" : "text-rose-400"}`}>
+        {results.status === "passed" ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+        {results.status === "passed"
+          ? (isPro ? "Execution complete \u2014 0 errors." : "Code executed successfully! \ud83c\udf89")
+          : (isPro ? "Execution failed \u2014 see output." : "Execution failed \u2014 check the output below.")}
+      </div>
+      {results.stdout && (
+        <div className="mt-2">
+          <h4 className="text-xs text-slate-500 font-semibold mb-1">stdout:</h4>
+          <pre className="text-xs font-mono text-green-400/90 bg-black/30 rounded-lg p-3 whitespace-pre-wrap">{results.stdout}</pre>
+        </div>
+      )}
+      {results.stderr && (
+        <div className="mt-2">
+          <h4 className="text-xs text-slate-500 font-semibold mb-1">stderr:</h4>
+          <pre className="text-xs font-mono text-rose-400/90 bg-black/30 rounded-lg p-3 whitespace-pre-wrap">{results.stderr}</pre>
+        </div>
+      )}
+      {results.testResults && results.testResults.length > 0 && (
+        <div className="mt-3">
+          <h4 className="text-xs text-slate-500 font-semibold mb-2">Test Results:</h4>
+          <div className="space-y-1.5">
+            {results.testResults.map((tr, i) => (
+              <div
+                key={i}
+                className={`flex items-start gap-2 rounded-lg border p-2.5 text-xs font-mono ${
+                  tr.passed ? "border-emerald-500/20 bg-emerald-500/5" : "border-rose-500/20 bg-rose-500/5"
+                }`}
+              >
+                {tr.passed ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                ) : (
+                  <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="text-slate-400">{tr.input ? `Input: ${tr.input}` : `Test ${i + 1}`}</div>
+                  <div className="text-emerald-400/80">
+                    Expected: <span className="text-emerald-400">{tr.expectedOutput}</span>
+                  </div>
+                  <div className={tr.passed ? "text-emerald-400/80" : "text-rose-400/80"}>
+                    Actual: <span className={tr.passed ? "text-emerald-400" : "text-rose-400"}>{tr.actualOutput || "(no output)"}</span>
+                  </div>
+                  {tr.error && <div className="text-rose-400/70 mt-1">{tr.error}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {results.jobId && (
+        <Link
+          to={createPageUrl(`Visualizer?jobId=${results.jobId}`)}
+          className="inline-flex items-center gap-1.5 mt-3 text-xs text-violet-400 hover:text-violet-300"
+        >
+          <Eye className="w-3.5 h-3.5" />
+          View execution trace in Visualizer
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function MasteryFeedbackPanel({ feedback, isPro }: { feedback: MasteryUpdateResponse; isPro: boolean }) {
+  return (
+    <div className="p-4 space-y-2">
+      <div className="flex items-center gap-3">
+        <div className={`text-sm font-semibold ${feedback.delta >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+          Mastery: {Math.round(feedback.newScore * 100)}%
+          <span className="ml-2 text-xs">
+            ({feedback.delta >= 0 ? "+" : ""}{Math.round(feedback.delta * 100)}%)
+          </span>
+        </div>
+        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-violet-500 rounded-full"
+            initial={{ width: `${Math.round(feedback.previousScore * 100)}%` }}
+            animate={{ width: `${Math.round(feedback.newScore * 100)}%` }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+          />
+        </div>
+      </div>
+      {feedback.justMastered && (
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20"
+        >
+          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          <span className="text-sm font-semibold text-emerald-400">
+            {isPro ? "Concept mastered." : "You mastered this concept! \uD83C\uDF1F"}
+          </span>
+        </motion.div>
+      )}
+      {feedback.newlyUnlocked.length > 0 && (
+        <div className="flex items-center gap-2 text-sm text-violet-400">
+          <span>{isPro ? "Unlocked:" : "\uD83D\uDD13 New concepts unlocked:"}</span>
+          {feedback.newlyUnlocked.map((name) => (
+            <span key={name} className="px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-xs font-medium">
+              {name}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Single Exercise ────────────────────────────────────────────
 
 function SingleExercise({ exerciseId }: { exerciseId: string }) {
@@ -257,20 +408,7 @@ function SingleExercise({ exerciseId }: { exerciseId: string }) {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [results, setResults] = useState<{
-    status: string;
-    stdout: string | null;
-    stderr: string | null;
-    jobId: string | null;
-    testResults?: Array<{
-      input: string;
-      expectedOutput: string;
-      actualOutput: string;
-      passed: boolean;
-      error?: string;
-    }> | null;
-    allTestsPassed?: boolean | null;
-  } | null>(null);
+  const [results, setResults] = useState<ExerciseResult | null>(null);
   const [shownHint, setShownHint] = useState(0);
   const [showHints, setShowHints] = useState(false);
   const [loadingAiHint, setLoadingAiHint] = useState(false);
@@ -315,33 +453,22 @@ function SingleExercise({ exerciseId }: { exerciseId: string }) {
         exerciseId: exercise.id,
       }) as { jobId: string; status: string; stdout: string | null; stderr: string | null; trace: unknown; testResults?: Array<{ input: string; expectedOutput: string; actualOutput: string; passed: boolean; error?: string }> | null; allTestsPassed?: boolean | null } | null;
 
-      if (result) {
-        const passed = result.allTestsPassed ?? (result.status === "completed");
-        setResults({
-          status: passed ? "passed" : "failed",
-          stdout: result.stdout,
-          stderr: result.stderr,
-          jobId: result.jobId,
-          testResults: result.testResults,
-          allTestsPassed: result.allTestsPassed,
-        });
+      if (!result) return;
 
-        // Submit mastery update if we have a concept and a logged-in user
-        const conceptId = exercise.lessons?.[0]?.lesson?.concept?.id;
-        if (conceptId && user?.id) {
-          try {
-            const masteryResult = await progress.submit(user.id, {
-              conceptId,
-              correct: passed,
-              exerciseId: exercise.id,
-            });
-            if (masteryResult) {
-              setMasteryFeedback(masteryResult);
-            }
-          } catch (err) {
-            console.error("Failed to submit mastery update:", err);
-          }
-        }
+      const passed = result.allTestsPassed ?? (result.status === "completed");
+      setResults({
+        status: passed ? "passed" : "failed",
+        stdout: result.stdout,
+        stderr: result.stderr,
+        jobId: result.jobId,
+        testResults: result.testResults,
+        allTestsPassed: result.allTestsPassed,
+      });
+
+      const conceptId = exercise.lessons?.[0]?.lesson?.concept?.id;
+      if (conceptId && user?.id) {
+        const masteryResult = await trySubmitMastery(user.id, conceptId, exercise.id, passed);
+        if (masteryResult) setMasteryFeedback(masteryResult);
       }
     } catch (err) {
       setResults({
@@ -549,73 +676,7 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
                 exit={{ height: 0, opacity: 0 }}
                 className="border-t border-border bg-muted overflow-hidden"
               >
-                <div className="p-4">
-                  <div className={`flex items-center gap-2 mb-3 font-semibold ${results.status === "passed" ? "text-emerald-400" : "text-rose-400"}`}>
-                    {results.status === "passed" ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
-                    {results.status === "passed"
-                      ? (isPro ? "Execution complete \u2014 0 errors." : "Code executed successfully! \ud83c\udf89")
-                      : (isPro ? "Execution failed \u2014 see output." : "Execution failed \u2014 check the output below.")}
-                  </div>
-                  {results.stdout && (
-                    <div className="mt-2">
-                      <h4 className="text-xs text-slate-500 font-semibold mb-1">stdout:</h4>
-                      <pre className="text-xs font-mono text-green-400/90 bg-black/30 rounded-lg p-3 whitespace-pre-wrap">{results.stdout}</pre>
-                    </div>
-                  )}
-                  {results.stderr && (
-                    <div className="mt-2">
-                      <h4 className="text-xs text-slate-500 font-semibold mb-1">stderr:</h4>
-                      <pre className="text-xs font-mono text-rose-400/90 bg-black/30 rounded-lg p-3 whitespace-pre-wrap">{results.stderr}</pre>
-                    </div>
-                  )}
-                  {/* Test results */}
-                  {results.testResults && results.testResults.length > 0 && (
-                    <div className="mt-3">
-                      <h4 className="text-xs text-slate-500 font-semibold mb-2">Test Results:</h4>
-                      <div className="space-y-1.5">
-                        {results.testResults.map((tr, i) => (
-                          <div
-                            key={i}
-                            className={`flex items-start gap-2 rounded-lg border p-2.5 text-xs font-mono ${
-                              tr.passed
-                                ? "border-emerald-500/20 bg-emerald-500/5"
-                                : "border-rose-500/20 bg-rose-500/5"
-                            }`}
-                          >
-                            {tr.passed ? (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                            ) : (
-                              <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <div className="text-slate-400">
-                                {tr.input ? `Input: ${tr.input}` : `Test ${i + 1}`}
-                              </div>
-                              <div className="text-emerald-400/80">
-                                Expected: <span className="text-emerald-400">{tr.expectedOutput}</span>
-                              </div>
-                              <div className={tr.passed ? "text-emerald-400/80" : "text-rose-400/80"}>
-                                Actual: <span className={tr.passed ? "text-emerald-400" : "text-rose-400"}>{tr.actualOutput || "(no output)"}</span>
-                              </div>
-                              {tr.error && (
-                                <div className="text-rose-400/70 mt-1">{tr.error}</div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {results.jobId && (
-                    <Link
-                      to={createPageUrl(`Visualizer?jobId=${results.jobId}`)}
-                      className="inline-flex items-center gap-1.5 mt-3 text-xs text-violet-400 hover:text-violet-300"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      View execution trace in Visualizer
-                    </Link>
-                  )}
-                </div>
+                <ResultsPanel results={results} isPro={isPro} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -629,51 +690,7 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
                 exit={{ height: 0, opacity: 0 }}
                 className="border-t border-border overflow-hidden"
               >
-                <div className="p-4 space-y-2">
-                  {/* Score delta */}
-                  <div className="flex items-center gap-3">
-                    <div className={`text-sm font-semibold ${masteryFeedback.delta >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                      Mastery: {Math.round(masteryFeedback.newScore * 100)}%
-                      <span className="ml-2 text-xs">
-                        ({masteryFeedback.delta >= 0 ? "+" : ""}{Math.round(masteryFeedback.delta * 100)}%)
-                      </span>
-                    </div>
-                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                      <motion.div
-                        className="h-full bg-violet-500 rounded-full"
-                        initial={{ width: `${Math.round(masteryFeedback.previousScore * 100)}%` }}
-                        animate={{ width: `${Math.round(masteryFeedback.newScore * 100)}%` }}
-                        transition={{ duration: 0.8, ease: "easeOut" }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Just mastered celebration */}
-                  {masteryFeedback.justMastered && (
-                    <motion.div
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20"
-                    >
-                      <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                      <span className="text-sm font-semibold text-emerald-400">
-                        {isPro ? "Concept mastered." : "You mastered this concept! \uD83C\uDF1F"}
-                      </span>
-                    </motion.div>
-                  )}
-
-                  {/* Newly unlocked concepts */}
-                  {masteryFeedback.newlyUnlocked.length > 0 && (
-                    <div className="flex items-center gap-2 text-sm text-violet-400">
-                      <span>{isPro ? "Unlocked:" : "\uD83D\uDD13 New concepts unlocked:"}</span>
-                      {masteryFeedback.newlyUnlocked.map((name) => (
-                        <span key={name} className="px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-xs font-medium">
-                          {name}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <MasteryFeedbackPanel feedback={masteryFeedback} isPro={isPro} />
               </motion.div>
             )}
           </AnimatePresence>

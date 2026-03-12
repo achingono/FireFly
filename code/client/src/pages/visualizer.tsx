@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { client, execution, ai, progress } from "@/api/client";
+import { client, execution, ai, progress, MasteryConcept } from "@/api/client";
 import { useAuth } from "@/lib/AuthContext";
 import { useTheme } from "@/lib/ThemeContext";
 import CodePane from "@/components/visualizer/code-pane";
@@ -118,6 +118,34 @@ function heapId(varName: string, _repr: string): string {
   return `heap_${varName}`;
 }
 
+function buildUIStack(backendStack: BackendFrame["stack"]): UIFrame["stack"] {
+  return backendStack.map((sf, idx) => {
+    const locals: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(sf.locals)) {
+      locals[k] = parseRepr(v);
+    }
+    return { frameId: `f${idx}`, name: sf.funcName, locals };
+  });
+}
+
+function buildHeapObjects(topLocals: Record<string, string>): UIFrame["heap"] {
+  const heap: UIFrame["heap"] = [];
+  for (const [k, v] of Object.entries(topLocals)) {
+    const heapType = isHeapType(v);
+    if (heapType === "list") {
+      const parsed = parseRepr(v);
+      heap.push({ id: heapId(k, v), type: "list", repr: v, items: Array.isArray(parsed) ? parsed : [] });
+    } else if (heapType === "dict") {
+      const parsed = parseRepr(v);
+      const entries = typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : {};
+      heap.push({ id: heapId(k, v), type: "dict", repr: v, entries });
+    }
+  }
+  return heap;
+}
+
 /**
  * Transform backend trace to UI trace format.
  * - Parses repr strings into real values for locals
@@ -127,58 +155,22 @@ function heapId(varName: string, _repr: string): string {
  */
 function transformTrace(backend: BackendTrace, language = "python"): UITrace {
   const frames: UIFrame[] = [];
+  const filename = language === "javascript" ? "main.js" : "main.py";
 
   for (let i = 0; i < backend.frames.length; i++) {
     const bf = backend.frames[i];
-
-    // Build UI stack frames
-    const uiStack = bf.stack.map((sf, idx) => {
-      const locals: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(sf.locals)) {
-        locals[k] = parseRepr(v);
-      }
-      return {
-        frameId: `f${idx}`,
-        name: sf.funcName,
-        locals,
-      };
-    });
-
-    // Synthesize heap objects from the top stack frame's locals
-    const heap: UIFrame["heap"] = [];
+    const uiStack = buildUIStack(bf.stack);
     const topLocals = bf.stack.length > 0 ? bf.stack[bf.stack.length - 1].locals : bf.locals;
-    for (const [k, v] of Object.entries(topLocals)) {
-      const heapType = isHeapType(v);
-      if (heapType === "list") {
-        const parsed = parseRepr(v);
-        heap.push({
-          id: heapId(k, v),
-          type: "list",
-          repr: v,
-          items: Array.isArray(parsed) ? parsed : [],
-        });
-      } else if (heapType === "dict") {
-        const parsed = parseRepr(v);
-        heap.push({
-          id: heapId(k, v),
-          type: "dict",
-          repr: v,
-          entries: typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
-            ? (parsed as Record<string, unknown>)
-            : {},
-        });
-      }
-    }
+    const heap = buildHeapObjects(topLocals);
 
     frames.push({
       step: bf.step,
       timeMs: i * 5,
-      file: language === "javascript" ? "main.js" : "main.py",
+      file: filename,
       line: bf.line,
       event: bf.event,
       stack: uiStack,
       heap,
-      // All frames share the full stdout (backend doesn't track per-frame cumulative)
       stdout: backend.stdout,
       stderr: backend.stderr,
     });
@@ -226,6 +218,65 @@ function ageProfileToRange(profile: string | undefined): string {
     case "pro": return "14+";
     default: return "11-13";
   }
+}
+
+// ─── Resolve-exercise helpers ────────────────────────────────────
+
+function computeConceptSets(concepts: MasteryConcept[]): {
+  conceptIdsToTry: string[];
+  inProgressConceptIds: string[];
+} {
+  const masteredIds = new Set(concepts.filter((c) => c.mastered).map((c) => c.conceptId));
+  const unlocked = concepts
+    .filter((c) => !c.mastered && c.prerequisites.every((p) => masteredIds.has(p)))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  const seen = new Set<string>();
+  const inProgressConceptIds = unlocked
+    .filter((c) => c.attempts > 0)
+    .sort((a, b) => {
+      const aTime = a.lastAttemptAt ? Date.parse(a.lastAttemptAt) : 0;
+      const bTime = b.lastAttemptAt ? Date.parse(b.lastAttemptAt) : 0;
+      return bTime - aTime;
+    })
+    .reduce<string[]>((acc, c) => {
+      if (!seen.has(c.conceptId)) { seen.add(c.conceptId); acc.push(c.conceptId); }
+      return acc;
+    }, []);
+
+  const triedSet = new Set(inProgressConceptIds);
+  const conceptIdsToTry = [...inProgressConceptIds];
+  for (const c of unlocked) {
+    if (!triedSet.has(c.conceptId)) { triedSet.add(c.conceptId); conceptIdsToTry.push(c.conceptId); }
+  }
+  return { conceptIdsToTry, inProgressConceptIds };
+}
+
+async function findLatestExerciseInHistory(userId: string, conceptId: string): Promise<string | null> {
+  const conceptProgress = await progress.concept(userId, conceptId);
+  const latest = [...(conceptProgress?.history ?? [])]
+    .reverse()
+    .find((item) => typeof item.exerciseId === "string" && item.exerciseId.length > 0);
+  return latest?.exerciseId ?? null;
+}
+
+async function tryFindInProgressExercise(userId: string, inProgressConceptIds: string[]): Promise<string | null> {
+  for (const conceptId of inProgressConceptIds) {
+    const exerciseId = await findLatestExerciseInHistory(userId, conceptId);
+    if (!exerciseId) continue;
+    const exercise = await client.entities.exercises.get(exerciseId) as Record<string, unknown> | null;
+    if (exercise?.id) return exerciseId;
+  }
+  return null;
+}
+
+async function tryFindFirstConceptExercise(conceptIds: string[]): Promise<string | null> {
+  for (const conceptId of conceptIds) {
+    const exercises = await client.entities.exercises.list({ conceptId }) as Array<Record<string, unknown>>;
+    const firstId = exercises[0]?.id as string | undefined;
+    if (firstId) return firstId;
+  }
+  return null;
 }
 
 // ─── Component ──────────────────────────────────────────────────
@@ -293,83 +344,32 @@ export default function Visualizer() {
   async function resolveExerciseForVisualizer() {
     setInitialLoading(true);
     try {
-      const conceptIdsToTry: string[] = [];
-      const inProgressConceptIds: string[] = [];
+      let conceptIdsToTry: string[] = [];
+      let inProgressConceptIds: string[] = [];
 
       if (user?.id) {
         const mastery = await progress.masteryMap(user.id);
-        const concepts = mastery?.concepts ?? [];
-        const masteredConceptIds = new Set(
-          concepts
-            .filter((concept) => concept.mastered)
-            .map((concept) => concept.conceptId)
-        );
+        const sets = computeConceptSets(mastery?.concepts ?? []);
+        conceptIdsToTry = sets.conceptIdsToTry;
+        inProgressConceptIds = sets.inProgressConceptIds;
 
-        const unlockedNotMastered = concepts
-          .filter((concept) => {
-            if (concept.mastered) {
-              return false;
-            }
-            return concept.prerequisites.every((prerequisiteId) => masteredConceptIds.has(prerequisiteId));
-          })
-          .sort((a, b) => a.sortOrder - b.sortOrder);
-
-        const inProgressConcept = unlockedNotMastered.find((concept) => concept.attempts > 0);
-        if (inProgressConcept) {
-          conceptIdsToTry.push(inProgressConcept.conceptId);
-        }
-
-        const allInProgress = unlockedNotMastered
-          .filter((concept) => concept.attempts > 0)
-          .sort((a, b) => {
-            const aTime = a.lastAttemptAt ? Date.parse(a.lastAttemptAt) : 0;
-            const bTime = b.lastAttemptAt ? Date.parse(b.lastAttemptAt) : 0;
-            return bTime - aTime;
-          });
-
-        for (const concept of allInProgress) {
-          if (!inProgressConceptIds.includes(concept.conceptId)) {
-            inProgressConceptIds.push(concept.conceptId);
-          }
-        }
-
-        for (const concept of unlockedNotMastered) {
-          if (!conceptIdsToTry.includes(concept.conceptId)) {
-            conceptIdsToTry.push(concept.conceptId);
-          }
-        }
-      }
-
-      if (user?.id) {
-        for (const conceptId of inProgressConceptIds) {
-          const conceptProgress = await progress.concept(user.id, conceptId);
-          const latestWithExercise = [...(conceptProgress?.history ?? [])]
-            .reverse()
-            .find((item) => typeof item.exerciseId === "string" && item.exerciseId.length > 0);
-
-          if (latestWithExercise?.exerciseId) {
-            const exercise = await client.entities.exercises.get(latestWithExercise.exerciseId) as Record<string, unknown> | null;
-            if (exercise?.id) {
-              await loadExercise(latestWithExercise.exerciseId, { manageLoading: false });
-              return;
-            }
-          }
-        }
-      }
-
-      for (const conceptId of conceptIdsToTry) {
-        const conceptExercises = await client.entities.exercises.list({ conceptId }) as Array<Record<string, unknown>>;
-        const firstExerciseId = conceptExercises[0]?.id as string | undefined;
-        if (firstExerciseId) {
-          await loadExercise(firstExerciseId, { manageLoading: false });
+        const inProgressId = await tryFindInProgressExercise(user.id, inProgressConceptIds);
+        if (inProgressId) {
+          await loadExercise(inProgressId, { manageLoading: false });
           return;
         }
       }
 
+      const conceptExerciseId = await tryFindFirstConceptExercise(conceptIdsToTry);
+      if (conceptExerciseId) {
+        await loadExercise(conceptExerciseId, { manageLoading: false });
+        return;
+      }
+
       const allExercises = await client.entities.exercises.list() as Array<Record<string, unknown>>;
-      const firstExerciseId = allExercises[0]?.id as string | undefined;
-      if (firstExerciseId) {
-        await loadExercise(firstExerciseId, { manageLoading: false });
+      const firstId = allExercises[0]?.id as string | undefined;
+      if (firstId) {
+        await loadExercise(firstId, { manageLoading: false });
       }
     } catch (err) {
       console.error("Failed to resolve exercise for visualizer:", err);

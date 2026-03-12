@@ -134,6 +134,29 @@ interface TestResult {
   error?: string;
 }
 
+function buildTestInvocationCode(userCode: string, testInput: string, language: string): string {
+  if (language === "python") {
+    return `${userCode}\n\n# Test invocation\nprint(${testInput})`;
+  }
+  if (language === "javascript") {
+    return `${userCode}\n\n// Test invocation\nconsole.log(${testInput});`;
+  }
+  return `${userCode}\n${testInput}`;
+}
+
+function parseJudge0TestResult(result: Judge0Result): { actualOutput: string; error?: string } {
+  if (result.status.id === 3) {
+    return { actualOutput: (result.stdout || "").trim() };
+  }
+  if (result.status.id === 6) {
+    return { actualOutput: "", error: `Compilation Error: ${result.compile_output || "Unknown error"}` };
+  }
+  if (result.status.id === 7) {
+    return { actualOutput: (result.stdout || "").trim(), error: `Runtime Error: ${result.stderr || "Unknown error"}` };
+  }
+  return { actualOutput: (result.stdout || "").trim(), error: `Execution failed: ${result.status.description}` };
+}
+
 /**
  * Evaluate user code against test cases.
  *
@@ -183,14 +206,7 @@ async function evaluateTestCases(
   // --- Function-call tests: need separate Judge0 execution ---
   for (const testCase of functionTests) {
     try {
-      let testCode: string;
-      if (language === "python") {
-        testCode = `${userCode}\n\n# Test invocation\nprint(${testCase.input})`;
-      } else if (language === "javascript") {
-        testCode = `${userCode}\n\n// Test invocation\nconsole.log(${testCase.input});`;
-      } else {
-        testCode = `${userCode}\n${testCase.input}`;
-      }
+      const testCode = buildTestInvocationCode(userCode, testCase.input, language);
 
       const token = await submitToJudge0({
         source_code: testCode,
@@ -202,20 +218,7 @@ async function evaluateTestCases(
 
       const result = await pollJudge0(token);
 
-      let actualOutput = "";
-      let error: string | undefined;
-
-      if (result.status.id === 3) {
-        actualOutput = (result.stdout || "").trim();
-      } else if (result.status.id === 6) {
-        error = `Compilation Error: ${result.compile_output || "Unknown error"}`;
-      } else if (result.status.id === 7) {
-        error = `Runtime Error: ${result.stderr || "Unknown error"}`;
-        actualOutput = (result.stdout || "").trim();
-      } else {
-        error = `Execution failed: ${result.status.description}`;
-        actualOutput = (result.stdout || "").trim();
-      }
+      const { actualOutput, error } = parseJudge0TestResult(result);
 
       const expectedNormalized = testCase.expectedOutput.trim();
       const actualNormalized = actualOutput.trim();
@@ -244,6 +247,56 @@ async function evaluateTestCases(
   }
 
   return results;
+}
+
+function determineJobStatus(result: Judge0Result): { status: "completed" | "failed" | "timeout"; statusMessage: string } {
+  if (result.status.id === 5) {
+    return { status: "timeout", statusMessage: "Time Limit Exceeded" };
+  }
+  if (result.status.id === 6) {
+    return { status: "failed", statusMessage: `Compilation Error: ${result.compile_output || "No details"}` };
+  }
+  if (result.status.id === 7) {
+    return { status: "failed", statusMessage: `Runtime Error: ${result.stderr || "No stderr captured"}` };
+  }
+  if (result.status.id !== 3) {
+    return { status: "failed", statusMessage: `Judge0 Status ${result.status.id}: ${result.status.description}` };
+  }
+  return { status: "completed", statusMessage: "" };
+}
+
+function extractTraceAndStdout(
+  language: string,
+  result: Judge0Result
+): { trace: TraceOutput | null; userStdout: string | null; userStderr: string | null } {
+  if ((language === "python" || language === "javascript") && result.stdout) {
+    const parsed = parseTrace(result.stdout);
+    if (parsed) {
+      return { trace: parsed, userStdout: parsed.stdout, userStderr: parsed.stderr };
+    }
+  }
+  return { trace: null, userStdout: result.stdout, userStderr: result.stderr };
+}
+
+async function runTestsAndFinalizeStatus(
+  exercise: { testCases: unknown } | null,
+  status: "completed" | "failed" | "timeout",
+  sourceCode: string,
+  userStdout: string | null,
+  language: string,
+  languageId: number,
+  fastify: any
+): Promise<{ testResults: TestResult[] | null; finalStatus: "completed" | "failed" | "timeout" }> {
+  if (!exercise || status !== "completed") {
+    return { testResults: null, finalStatus: status };
+  }
+  const exerciseTestCases = exercise.testCases as Array<{ input: string; expectedOutput: string }>;
+  if (exerciseTestCases.length === 0) {
+    return { testResults: null, finalStatus: status };
+  }
+  const testResults = await evaluateTestCases(sourceCode, userStdout, exerciseTestCases, language, languageId, fastify);
+  const finalStatus = testResults.every(tr => tr.passed) ? status : "failed";
+  return { testResults, finalStatus };
 }
 
 const executionRoutes: FastifyPluginAsync = async (fastify) => {
@@ -351,57 +404,17 @@ const executionRoutes: FastifyPluginAsync = async (fastify) => {
         if (result.compile_output) fastify.log.debug(`Judge0 compile_output: ${result.compile_output.substring(0, 500)}`);
 
         // Determine status
-        let status: "completed" | "failed" | "timeout" = "completed";
-        let statusMessage = "";
-        if (result.status.id === 5) {
-          status = "timeout";
-          statusMessage = "Time Limit Exceeded";
-        } else if (result.status.id === 6) {
-          status = "failed";
-          statusMessage = `Compilation Error: ${result.compile_output || "No details"}`;
-        } else if (result.status.id === 7) {
-          status = "failed";
-          statusMessage = `Runtime Error: ${result.stderr || "No stderr captured"}`;
-        } else if (result.status.id !== 3) {
-          status = "failed";
-          statusMessage = `Judge0 Status ${result.status.id}: ${result.status.description}`;
-        }
+        const { status: resolvedStatus, statusMessage } = determineJobStatus(result);
+        let status = resolvedStatus;
 
         // Parse trace from stdout (Python and JavaScript)
-        let trace = null;
-        let userStdout = result.stdout;
-        let userStderr = result.stderr;
-
-        if ((language === "python" || language === "javascript") && result.stdout) {
-          const parsed = parseTrace(result.stdout);
-          if (parsed) {
-            trace = parsed;
-            userStdout = parsed.stdout;
-            userStderr = parsed.stderr ?? result.stderr;
-          }
-        }
+        const { trace, userStdout, userStderr } = extractTraceAndStdout(language, result);
 
         // Evaluate test cases if exercise is provided and execution succeeded
-        let testResults: TestResult[] | null = null;
-        if (exercise && status === "completed") {
-          const exerciseTestCases = exercise.testCases as Array<{ input: string; expectedOutput: string }>;
-          if (exerciseTestCases.length > 0) {
-            testResults = await evaluateTestCases(
-              sourceCode,
-              userStdout,
-              exerciseTestCases,
-              language,
-              languageId,
-              fastify
-            );
-
-            // If any test failed, mark the overall execution as failed
-            const allPassed = testResults.every(tr => tr.passed);
-            if (!allPassed) {
-              status = "failed";
-            }
-          }
-        }
+        const { testResults, finalStatus } = await runTestsAndFinalizeStatus(
+          exercise, status, sourceCode, userStdout, language, languageId, fastify
+        );
+        status = finalStatus;
 
         // Update job
         await prisma.executionJob.update({

@@ -1,30 +1,30 @@
 'use strict';
-var vm = require('vm');
+const vm = require('vm');
 
-var MAX_FRAMES = 500;
-var TIMEOUT_MS = 5000;
-var _frames = [];
-var _step = 0;
-var _callStack = [{ funcName: '<module>', line: 0 }];
-var _capturedStdout = [];
-var _capturedStderr = [];
-var _userError = null;
-var _done = false;
+const MAX_FRAMES = 500;
+const TIMEOUT_MS = 5000;
+const _frames = [];
+let _step = 0;
+const _callStack = [{ funcName: '<module>', line: 0 }];
+const _capturedStdout = [];
+const _capturedStderr = [];
+let _userError = null;
+let _done = false;
 
 // Decode user code from base64
-var _userCode = Buffer.from('__BASE64_CODE__', 'base64').toString('utf-8');
-var _userLines = _userCode.split('\n');
-var _totalLines = _userLines.length;
+const _userCode = Buffer.from('__BASE64_CODE__', 'base64').toString('utf-8');
+const _userLines = _userCode.split('\n');
+const _totalLines = _userLines.length;
 
 // Instrument the user code: prepend _t(lineNum) before each non-empty line
 // Also convert let/const to var so variables are accessible on the sandbox context.
 // Replacement is done line-by-line to avoid corrupting string literals.
 function _instrumentCode(code) {
-  var lines = code.split('\n');
-  var result = [];
-  for (var i = 0; i < lines.length; i++) {
-    var line = lines[i];
-    var trimmed = line.trim();
+  const lines = code.split('\n');
+  const result = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
     // Skip empty lines and lines that are just comments
     if (trimmed === '' || trimmed.startsWith('//')) {
       result.push(line);
@@ -37,7 +37,7 @@ function _instrumentCode(code) {
     }
     // Convert let/const to var only at the start of a statement (not inside strings)
     // Match let/const followed by whitespace at the beginning of the trimmed line
-    var transformed = line.replace(/^(\s*)(let|const)(\s+)/, '$1var$3');
+    const transformed = line.replace(/^(\s*)(let|const)(\s+)/, '$1var$3');
     // Prepend trace call before each executable line
     result.push('_t(' + (i + 1) + '); ' + transformed);
   }
@@ -57,22 +57,22 @@ function _repr(val) {
 }
 
 // Build the sandbox context
-var _sandbox = {
+const _sandbox = {
   console: {
     log: function() {
-      var args = Array.prototype.slice.call(arguments);
+      const args = Array.prototype.slice.call(arguments);
       _capturedStdout.push(args.map(String).join(' '));
     },
     error: function() {
-      var args = Array.prototype.slice.call(arguments);
+      const args = Array.prototype.slice.call(arguments);
       _capturedStderr.push(args.map(String).join(' '));
     },
     warn: function() {
-      var args = Array.prototype.slice.call(arguments);
+      const args = Array.prototype.slice.call(arguments);
       _capturedStderr.push(args.map(String).join(' '));
     },
     info: function() {
-      var args = Array.prototype.slice.call(arguments);
+      const args = Array.prototype.slice.call(arguments);
       _capturedStdout.push(args.map(String).join(' '));
     }
   },
@@ -107,7 +107,7 @@ var _sandbox = {
 };
 
 // Set of keys that are sandbox infrastructure (not user variables)
-var _builtinKeys = new Set(Object.keys(_sandbox));
+const _builtinKeys = new Set(Object.keys(_sandbox));
 _builtinKeys.add('_t');
 
 // Trace function — called before each user line
@@ -119,10 +119,10 @@ _sandbox._t = function(lineNum) {
   _step++;
 
   // Collect locals from sandbox (only user-defined variables)
-  var locals = {};
-  var keys = Object.keys(_sandbox);
-  for (var i = 0; i < keys.length; i++) {
-    var k = keys[i];
+  const locals = {};
+  const keys = Object.keys(_sandbox);
+  for (let i = 0; i < keys.length; i++) {
+    const k = keys[i];
     if (_builtinKeys.has(k)) continue;
     try {
       locals[k] = _repr(_sandbox[k]);
@@ -132,9 +132,9 @@ _sandbox._t = function(lineNum) {
   }
 
   // Build stack (single frame for top-level code)
-  var stack = [];
-  for (var s = 0; s < _callStack.length; s++) {
-    var sf = _callStack[s];
+  const stack = [];
+  for (let s = 0; s < _callStack.length; s++) {
+    const sf = _callStack[s];
     stack.push({
       funcName: sf.funcName,
       line: lineNum,
@@ -156,7 +156,7 @@ _sandbox._t = function(lineNum) {
 
 // Instrument and execute
 try {
-  var _instrumented = _instrumentCode(_userCode);
+  const _instrumented = _instrumentCode(_userCode);
   vm.runInNewContext(_instrumented, _sandbox, {
     filename: 'user_code.js',
     timeout: TIMEOUT_MS
@@ -171,10 +171,10 @@ try {
 
 // Capture final variable state if we have frames
 if (_frames.length > 0 && !_done) {
-  var finalLocals = {};
-  var fkeys = Object.keys(_sandbox);
-  for (var fi = 0; fi < fkeys.length; fi++) {
-    var fk = fkeys[fi];
+  const finalLocals = {};
+  const fkeys = Object.keys(_sandbox);
+  for (let fi = 0; fi < fkeys.length; fi++) {
+    const fk = fkeys[fi];
     if (_builtinKeys.has(fk)) continue;
     try {
       finalLocals[fk] = _repr(_sandbox[fk]);
@@ -184,14 +184,14 @@ if (_frames.length > 0 && !_done) {
   }
   // Update the last frame's locals to reflect final state
   _frames[_frames.length - 1].locals = finalLocals;
-  var lastStack = _frames[_frames.length - 1].stack;
+  const lastStack = _frames[_frames.length - 1].stack;
   if (lastStack.length > 0) {
     lastStack[lastStack.length - 1].locals = finalLocals;
   }
 }
 
 // Output trace
-var _output = {
+const _output = {
   frames: _frames,
   stdout: _capturedStdout.join('\n'),
   stderr: _capturedStderr.join('\n'),
@@ -201,3 +201,4 @@ var _output = {
 process.stdout.write('---TRACE_START---\n');
 process.stdout.write(JSON.stringify(_output));
 process.stdout.write('\n---TRACE_END---\n');
+

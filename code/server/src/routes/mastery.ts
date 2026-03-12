@@ -50,6 +50,58 @@ function bktUpdate(pL: number, correct: boolean): number {
   return Math.max(0, Math.min(1, pLNext));
 }
 
+async function upsertMasteryRecord(
+  record: { id: string; history: unknown } | null,
+  userId: string,
+  conceptId: string,
+  newScore: number,
+  now: Date,
+  historyEntry: Prisma.InputJsonValue
+) {
+  if (record) {
+    const existingHistory = Array.isArray(record.history) ? record.history as unknown[] : [];
+    return prisma.masteryRecord.update({
+      where: { id: record.id },
+      data: {
+        score: newScore,
+        attempts: { increment: 1 },
+        lastAttemptAt: now,
+        history: [...existingHistory, historyEntry] as Prisma.InputJsonValue[],
+      },
+    });
+  }
+  return prisma.masteryRecord.create({
+    data: {
+      userId,
+      conceptId,
+      score: newScore,
+      attempts: 1,
+      lastAttemptAt: now,
+      history: [historyEntry],
+    },
+  });
+}
+
+async function findNewlyUnlockedConcepts(userId: string): Promise<string[]> {
+  const allConcepts = await prisma.concept.findMany({
+    select: { id: true, name: true, prerequisites: true },
+  });
+  const allMastery = await prisma.masteryRecord.findMany({
+    where: { userId, score: { gte: BKT.MASTERY_THRESHOLD } },
+    select: { conceptId: true },
+  });
+  const masteredSet = new Set(allMastery.map((m) => m.conceptId));
+  const unlocked: string[] = [];
+  for (const c of allConcepts) {
+    const prereqs = Array.isArray(c.prerequisites) ? (c.prerequisites as string[]) : [];
+    if (prereqs.length === 0 || masteredSet.has(c.id)) continue;
+    if (prereqs.every((p) => masteredSet.has(p))) {
+      unlocked.push(c.name);
+    }
+  }
+  return unlocked;
+}
+
 // ─── Routes ─────────────────────────────────────────────────────
 
 const masteryRoutes: FastifyPluginAsync = async (fastify) => {
@@ -154,61 +206,12 @@ const masteryRoutes: FastifyPluginAsync = async (fastify) => {
         exerciseId: exerciseId ?? null,
       };
 
-      if (record) {
-        // Update existing
-        const existingHistory = Array.isArray(record.history) ? record.history as unknown[] : [];
-        record = await prisma.masteryRecord.update({
-          where: { id: record.id },
-          data: {
-            score: newScore,
-            attempts: { increment: 1 },
-            lastAttemptAt: now,
-            history: [...existingHistory, historyEntry] as Prisma.InputJsonValue[],
-          },
-        });
-      } else {
-        // Create new
-        record = await prisma.masteryRecord.create({
-          data: {
-            userId,
-            conceptId,
-            score: newScore,
-            attempts: 1,
-            lastAttemptAt: now,
-            history: [historyEntry],
-          },
-        });
-      }
+      record = await upsertMasteryRecord(record, userId, conceptId, newScore, now, historyEntry as Prisma.InputJsonValue);
 
       const mastered = newScore >= BKT.MASTERY_THRESHOLD;
       const justMastered = mastered && previousScore < BKT.MASTERY_THRESHOLD;
 
-      // If just mastered, check what concepts are now unlocked
-      let newlyUnlocked: string[] = [];
-      if (justMastered) {
-        // Find concepts that list this concept as a prerequisite
-        const allConcepts = await prisma.concept.findMany({
-          select: { id: true, name: true, prerequisites: true },
-        });
-
-        // Get all mastered concept IDs for this user
-        const allMastery = await prisma.masteryRecord.findMany({
-          where: { userId, score: { gte: BKT.MASTERY_THRESHOLD } },
-          select: { conceptId: true },
-        });
-        const masteredSet = new Set(allMastery.map((m) => m.conceptId));
-
-        for (const c of allConcepts) {
-          const prereqs = Array.isArray(c.prerequisites) ? (c.prerequisites as string[]) : [];
-          if (prereqs.length === 0) continue;
-          if (masteredSet.has(c.id)) continue; // already mastered
-          // Check if all prerequisites are now mastered
-          const allPrereqsMet = prereqs.every((p) => masteredSet.has(p));
-          if (allPrereqsMet) {
-            newlyUnlocked.push(c.name);
-          }
-        }
-      }
+      const newlyUnlocked = justMastered ? await findNewlyUnlockedConcepts(userId) : [];
 
       return reply.envelope({
         conceptId,
