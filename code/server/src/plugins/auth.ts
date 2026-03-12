@@ -37,6 +37,10 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
     sign: {
       expiresIn: env.JWT_EXPIRES_IN,
     },
+    cookie: {
+      cookieName: "access_token",
+      signed: false,
+    },
   });
 
   // authenticate decorator — preHandler hook

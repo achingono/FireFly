@@ -65,8 +65,6 @@ export const STEPPER_SPEEDS = {
 
 /** Local storage keys */
 export const STORAGE_KEYS = {
-  authToken: "firefly_auth_token",
-  refreshToken: "firefly_refresh_token",
   userPreferences: "firefly_user_prefs",
   ageProfile: "firefly_age_profile",
 } as const;

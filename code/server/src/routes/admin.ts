@@ -2,8 +2,8 @@ import { FastifyPluginAsync } from "fastify";
 import prisma from "../config/database.js";
 
 const adminRoutes: FastifyPluginAsync = async (app) => {
-  // POST /api/v1/admin/seed — Idempotent seed for local development
-  app.post("/api/v1/admin/seed", async (_request, reply) => {
+  // POST /api/v1/admin/seed — Idempotent seed for local development (admin only)
+  app.post("/api/v1/admin/seed", { preHandler: [app.requireRole("admin")] }, async (_request, reply) => {
     // ── Users ──────────────────────────────────────────────────
     const users = [
       { email: "student1@test.com", displayName: "Alex Explorer", role: "student" as const, age: 9, ageProfile: "fun" as const, onboarded: true },

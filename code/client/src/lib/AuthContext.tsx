@@ -50,22 +50,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [authError, setAuthError] = useState<{ type: string; message?: string } | null>(null);
 
   const loadUser = useCallback(async () => {
-    // Check for token in URL (OIDC callback)
-    const params = new URLSearchParams(window.location.search);
-    const tokenFromUrl = params.get("token");
-    if (tokenFromUrl) {
-      setToken(tokenFromUrl);
-      // Clean URL without page reload
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, "", cleanUrl);
-    }
-
-    const token = getToken();
-    if (!token) {
-      setIsLoadingAuth(false);
-      return;
-    }
-
+    // Session is restored via the httpOnly access_token cookie — no URL token needed.
+    // The /auth/me endpoint accepts both Authorization header and cookie-based auth.
     try {
       const u = await client.auth.me();
       setUser(u);

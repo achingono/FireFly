@@ -162,6 +162,7 @@ const curriculumRoutes: FastifyPluginAsync = async (fastify) => {
   /** GET /api/v1/exercises/:id — single exercise */
   fastify.get<{ Params: { id: string } }>(
     "/api/v1/exercises/:id",
+    { preHandler: [fastify.authenticate] },
     async (request, reply) => {
       const exercise = await prisma.exercise.findUnique({
         where: { id: request.params.id },
@@ -180,7 +181,9 @@ const curriculumRoutes: FastifyPluginAsync = async (fastify) => {
       if (!exercise) {
         return reply.envelopeError("NotFound", "Exercise not found", undefined, 404);
       }
-      return reply.envelope(exercise);
+      const isPrivileged = ["teacher", "admin"].includes((request as FastifyRequest & { user: { role: string } }).user.role);
+      const { solutionCode: _solutionCode, ...publicExercise } = exercise as typeof exercise & { solutionCode?: string | null };
+      return reply.envelope(isPrivileged ? exercise : publicExercise);
     }
   );
 

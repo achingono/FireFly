@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { client, setToken } from "@/api/client";
+import { client } from "@/api/client";
 import { useAuth } from "@/lib/AuthContext";
 import { createPageUrl } from "@/utils";
 import { Code2, Loader2, LogIn, Sparkles } from "lucide-react";
@@ -13,19 +13,18 @@ export default function Auth() {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Handle OIDC callback — token comes as ?token=xxx&onboarded=true/false
+  // Handle OIDC callback — session token is delivered via httpOnly cookie.
+  // The ?onboarded= param indicates whether to route to onboarding.
   useEffect(() => {
-    const token = searchParams.get("token");
     const onboarded = searchParams.get("onboarded");
 
-    if (token) {
+    if (onboarded !== null) {
       setProcessing(true);
-      setToken(token);
 
       // Clean URL
       window.history.replaceState({}, "", "/Auth");
 
-      // Reload user
+      // Reload user via cookie-based /auth/me
       refreshUser().then(() => {
         if (onboarded === "false") {
           navigate("/Onboarding", { replace: true });

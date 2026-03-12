@@ -3,8 +3,11 @@
 const BASE_URL = import.meta.env.VITE_API_URL ?? "/api/v1";
 
 // ─── Token management ────────────────────────────────────────────
+// Token is kept in memory only — never persisted to localStorage (XSS risk).
+// On page reload, session is restored via the httpOnly access_token cookie
+// through an authenticated call to /auth/me.
 
-let accessToken: string | null = localStorage.getItem("firefly_token");
+let accessToken: string | null = null;
 
 export function getToken(): string | null {
   return accessToken;
@@ -12,11 +15,6 @@ export function getToken(): string | null {
 
 export function setToken(token: string | null): void {
   accessToken = token;
-  if (token) {
-    localStorage.setItem("firefly_token", token);
-  } else {
-    localStorage.removeItem("firefly_token");
-  }
 }
 
 // ─── HTTP helpers ────────────────────────────────────────────────

@@ -189,9 +189,8 @@ const authRoutes: FastifyPluginAsync = async (app) => {
         maxAge: REFRESH_TOKEN_MAX_AGE,
       });
 
-      // Redirect to client with token (client will store it)
+      // Redirect to client — token is delivered via httpOnly cookie (no URL param)
       const clientRedirect = new URL(`${env.CLIENT_ORIGIN}/Auth`);
-      clientRedirect.searchParams.set("token", accessToken);
       clientRedirect.searchParams.set("onboarded", user.onboarded ? "true" : "false");
 
       return reply.redirect(clientRedirect.href);
