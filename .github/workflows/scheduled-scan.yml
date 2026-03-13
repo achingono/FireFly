@@ -106,26 +106,27 @@ jobs:
                 continue
               fi
 
-              BODY=$(cat << EOF
-**SonarQube Finding**
-
-| Field | Value |
-|-------|-------|
-| Key | \`${KEY}\` |
-| Severity | ${SEVERITY} |
-| Type | ${TYPE} |
-| Rule | \`${RULE}\` |
-| File | \`${COMPONENT}\` |
-| Line | ${LINE} |
-
-**Message:** ${MESSAGE}
-EOF
-)
+              BODY_FILE=$(mktemp)
+              printf '%s\n' \
+                "**SonarQube Finding**" \
+                "" \
+                "| Field | Value |" \
+                "|-------|-------|" \
+                "| Key | \`${KEY}\` |" \
+                "| Severity | ${SEVERITY} |" \
+                "| Type | ${TYPE} |" \
+                "| Rule | \`${RULE}\` |" \
+                "| File | \`${COMPONENT}\` |" \
+                "| Line | ${LINE} |" \
+                "" \
+                "**Message:** ${MESSAGE}" > "${BODY_FILE}"
 
               gh issue create \
                 --title "${TITLE}" \
-                --body "${BODY}" \
+                --body-file "${BODY_FILE}" \
                 --label "${LABEL}" || true
+
+              rm -f "${BODY_FILE}"
 
             done <<< "$ISSUES"
 
