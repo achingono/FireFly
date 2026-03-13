@@ -10,7 +10,7 @@ const requestIdPlugin: FastifyPluginAsync = async (fastify) => {
     } else {
       request.id = uuidv4();
     }
-    void reply.header("X-Request-Id", request.id);
+    reply.header("X-Request-Id", request.id);
   });
 };
 
