@@ -106,7 +106,8 @@ jobs:
                 continue
               fi
 
-              BODY="**SonarQube Finding**
+              BODY=$(cat << EOF
+**SonarQube Finding**
 
 | Field | Value |
 |-------|-------|
@@ -117,7 +118,9 @@ jobs:
 | File | \`${COMPONENT}\` |
 | Line | ${LINE} |
 
-**Message:** ${MESSAGE}"
+**Message:** ${MESSAGE}
+EOF
+)
 
               gh issue create \
                 --title "${TITLE}" \
