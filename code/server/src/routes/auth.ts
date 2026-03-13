@@ -101,7 +101,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
       );
 
       // Set tokens as cookies
-      void reply.setCookie("access_token", accessToken, {
+      reply.setCookie("access_token", accessToken, {
         httpOnly: true,
         secure: isSecureCookie,
         sameSite: "lax",
@@ -109,7 +109,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
         maxAge: ACCESS_TOKEN_MAX_AGE,
       });
 
-      void reply.setCookie("refresh_token", refreshToken, {
+      reply.setCookie("refresh_token", refreshToken, {
         httpOnly: true,
         secure: isSecureCookie,
         sameSite: "lax",
@@ -184,7 +184,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
         { expiresIn: env.JWT_REFRESH_EXPIRES_IN }
       );
 
-      void reply.setCookie("access_token", newAccessToken, {
+      reply.setCookie("access_token", newAccessToken, {
         httpOnly: true,
         secure: isSecureCookie,
         sameSite: "lax",
@@ -192,7 +192,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
         maxAge: ACCESS_TOKEN_MAX_AGE,
       });
 
-      void reply.setCookie("refresh_token", newRefreshToken, {
+      reply.setCookie("refresh_token", newRefreshToken, {
         httpOnly: true,
         secure: isSecureCookie,
         sameSite: "lax",
@@ -253,8 +253,8 @@ const authRoutes: FastifyPluginAsync = async (app) => {
 
   // ─── POST /api/v1/auth/logout — Clear cookies ───
   app.post("/api/v1/auth/logout", async (_request, reply) => {
-    void reply.clearCookie("access_token", { path: "/" });
-    void reply.clearCookie("refresh_token", { path: "/api/v1/auth" });
+    reply.clearCookie("access_token", { path: "/" });
+    reply.clearCookie("refresh_token", { path: "/api/v1/auth" });
     return reply.envelope({ message: "Logged out" });
   });
 };
