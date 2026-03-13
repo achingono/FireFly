@@ -1,0 +1,130 @@
+name: Scheduled Scan
+
+on:
+  schedule:
+    - cron: "0 10 * * 0" # Every Sunday 5am EST (10am UTC)
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+      issues: write
+
+    services:
+      sonarqube:
+        image: sonarqube:community
+        ports:
+          - 9000:9000
+        env:
+          SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+        options: >-
+          --health-cmd "curl -sf http://localhost:9000/api/system/status | grep -q '\"status\":\"UP\"'"
+          --health-interval 15s
+          --health-timeout 5s
+          --health-retries 20
+          --health-start-period 120s
+
+    env:
+      SONAR_HOST_URL: http://localhost:9000
+      SONAR_PROJECT_KEY: achingono_firefly
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Configure SonarQube — set admin password and create project token
+        id: sonar-setup
+        run: |
+          NEW_PASSWORD="$(openssl rand -base64 20)"
+
+          curl -sf -X POST "${SONAR_HOST_URL}/api/users/change_password" \
+            -u "admin:admin" \
+            --data-urlencode "login=admin" \
+            --data-urlencode "password=${NEW_PASSWORD}" \
+            --data-urlencode "previousPassword=admin"
+
+          curl -sf -X POST "${SONAR_HOST_URL}/api/projects/create" \
+            -u "admin:${NEW_PASSWORD}" \
+            -d "name=FireFly&project=${SONAR_PROJECT_KEY}&visibility=private"
+
+          SONAR_TOKEN=$(curl -sf -X POST "${SONAR_HOST_URL}/api/user_tokens/generate" \
+            -u "admin:${NEW_PASSWORD}" \
+            -d "name=ci-scanner&type=GLOBAL_ANALYSIS_TOKEN" | jq -r '.token')
+
+          echo "sonar_token=${SONAR_TOKEN}" >> "$GITHUB_OUTPUT"
+
+      - name: Run SonarQube scan
+        run: |
+          docker run --rm \
+            --network host \
+            -e SONAR_TOKEN="${{ steps.sonar-setup.outputs.sonar_token }}" \
+            -e SONAR_HOST_URL="${SONAR_HOST_URL}" \
+            -v "${GITHUB_WORKSPACE}:/usr/src" \
+            sonarsource/sonar-scanner-cli:latest \
+            -Dsonar.projectKey="${SONAR_PROJECT_KEY}" \
+            -Dsonar.qualitygate.wait=true
+
+      - name: Fetch SonarQube issues and create GitHub issues
+        if: always()
+        env:
+          SONAR_TOKEN: ${{ steps.sonar-setup.outputs.sonar_token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PAGE=1
+          PAGE_SIZE=100
+          TOTAL=1
+
+          while [ $((($PAGE - 1) * $PAGE_SIZE)) -lt $TOTAL ]; do
+            RESPONSE=$(curl -sf -u "${SONAR_TOKEN}:" \
+              "${SONAR_HOST_URL}/api/issues/search?projectKeys=${SONAR_PROJECT_KEY}&statuses=OPEN&resolved=false&p=${PAGE}&ps=${PAGE_SIZE}")
+
+            TOTAL=$(echo "$RESPONSE" | jq -r '.total // 0')
+            ISSUES=$(echo "$RESPONSE" | jq -c '.issues[]')
+
+            while IFS= read -r issue; do
+              [ -z "$issue" ] && continue
+
+              KEY=$(echo "$issue" | jq -r '.key')
+              SEVERITY=$(echo "$issue" | jq -r '.severity // "UNKNOWN"')
+              TYPE=$(echo "$issue" | jq -r '.type // "CODE_SMELL"')
+              MESSAGE=$(echo "$issue" | jq -r '.message // "No message"')
+              COMPONENT=$(echo "$issue" | jq -r '.component // ""' | sed "s/^${SONAR_PROJECT_KEY}://")
+              LINE=$(echo "$issue" | jq -r '.line // "N/A"')
+              RULE=$(echo "$issue" | jq -r '.rule // ""')
+
+              TITLE="[Sonar] ${SEVERITY}: ${MESSAGE}"
+              LABEL="sonar"
+
+              EXISTING=$(gh issue list --label "${LABEL}" --search "${KEY}" --json number --jq '.[0].number // empty')
+              if [ -n "$EXISTING" ]; then
+                continue
+              fi
+
+              BODY="**SonarQube Finding**
+
+| Field | Value |
+|-------|-------|
+| Key | \`${KEY}\` |
+| Severity | ${SEVERITY} |
+| Type | ${TYPE} |
+| Rule | \`${RULE}\` |
+| File | \`${COMPONENT}\` |
+| Line | ${LINE} |
+
+**Message:** ${MESSAGE}"
+
+              gh issue create \
+                --title "${TITLE}" \
+                --body "${BODY}" \
+                --label "${LABEL}" || true
+
+            done <<< "$ISSUES"
+
+            PAGE=$((PAGE + 1))
+          done
