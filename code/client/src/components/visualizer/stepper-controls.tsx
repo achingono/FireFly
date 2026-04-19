@@ -26,7 +26,7 @@ const EVENT_COLORS = {
 
 export default function StepperControls({
   currentStep, totalFrames, onStep, isPlaying, setIsPlaying, onExplain, currentFrame
-}: StepperControlsProps) {
+}: Readonly<StepperControlsProps>) {
   const { isFun, isPro } = useTheme();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 

@@ -3,12 +3,12 @@ import { motion, AnimatePresence } from "framer-motion";
 interface StackFrame { frameId: string; name: string; locals?: Record<string, unknown>; }
 interface StackPaneProps { frames: StackFrame[]; }
 
-export default function StackPane({ frames }: StackPaneProps) {
+export default function StackPane({ frames }: Readonly<StackPaneProps>) {
   return (
     <div className="flex flex-col overflow-hidden bg-muted">
       <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50">
         <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Call Stack</span>
-        <span className="ml-auto text-[10px] text-slate-700">{frames.length} frame{frames.length !== 1 ? "s" : ""}</span>
+        <span className="ml-auto text-[10px] text-slate-700">{frames.length} frame{frames.length === 1 ? "" : "s"}</span>
       </div>
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         <AnimatePresence initial={false}>
@@ -58,5 +58,12 @@ function formatVal(v: unknown) {
   if (Array.isArray(v)) return `[${v.join(", ")}]`;
   if (v === null) return "None";
   if (v === undefined) return "—";
+  if (typeof v === "object") {
+    try {
+      return JSON.stringify(v);
+    } catch {
+      return "[object]";
+    }
+  }
   return String(v);
 }

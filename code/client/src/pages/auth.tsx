@@ -22,7 +22,7 @@ export default function Auth() {
       setProcessing(true);
 
       // Clean URL
-      window.history.replaceState({}, "", "/Auth");
+      globalThis.history.replaceState({}, "", "/Auth");
 
       // Reload user via cookie-based /auth/me
       refreshUser().then(() => {

@@ -6,4 +6,4 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 
-export const isIframe = window.self !== window.top;
+export const isIframe = globalThis.self !== globalThis.top;

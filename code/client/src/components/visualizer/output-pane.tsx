@@ -2,7 +2,7 @@ import { Terminal, AlertCircle } from "lucide-react";
 
 interface OutputPaneProps { stdout: string; stderr: string; step: number; total: number; }
 
-export default function OutputPane({ stdout, stderr, step, total }: OutputPaneProps) {
+export default function OutputPane({ stdout, stderr, step, total }: Readonly<OutputPaneProps>) {
   const lines = stdout ? stdout.split("\n").filter(Boolean) : [];
   const errLines = stderr ? stderr.split("\n").filter(Boolean) : [];
 

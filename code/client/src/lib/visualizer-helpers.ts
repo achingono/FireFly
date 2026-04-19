@@ -102,10 +102,10 @@ function parseRepr(repr: string): unknown {
   if (repr.startsWith("[") && repr.endsWith("]")) {
     try {
       const jsonified = repr
-        .replace(/\bTrue\b/g, "true")
-        .replace(/\bFalse\b/g, "false")
-        .replace(/\bNone\b/g, "null")
-        .replace(/'/g, '"');
+        .replaceAll(/\bTrue\b/g, "true")
+        .replaceAll(/\bFalse\b/g, "false")
+        .replaceAll(/\bNone\b/g, "null")
+        .replaceAll("'", '"');
       return JSON.parse(jsonified);
     } catch {
       return repr;
@@ -116,10 +116,10 @@ function parseRepr(repr: string): unknown {
   if (repr.startsWith("{") && repr.endsWith("}")) {
     try {
       const jsonified = repr
-        .replace(/\bTrue\b/g, "true")
-        .replace(/\bFalse\b/g, "false")
-        .replace(/\bNone\b/g, "null")
-        .replace(/'/g, '"');
+        .replaceAll(/\bTrue\b/g, "true")
+        .replaceAll(/\bFalse\b/g, "false")
+        .replaceAll(/\bNone\b/g, "null")
+        .replaceAll("'", '"');
       return JSON.parse(jsonified);
     } catch {
       return repr;
@@ -259,8 +259,10 @@ export async function tryFindInProgressExercise(userId: string, inProgressConcep
 export async function tryFindFirstConceptExercise(conceptIds: string[]): Promise<string | null> {
   for (const conceptId of conceptIds) {
     const exercises = await client.entities.exercises.list({ conceptId }) as Array<Record<string, unknown>>;
-    const firstId = exercises[0]?.id as string | undefined;
-    if (firstId) return firstId;
+    const firstId = exercises[0]?.id;
+    if (typeof firstId === "string" && firstId.length > 0) {
+      return firstId;
+    }
   }
   return null;
 }

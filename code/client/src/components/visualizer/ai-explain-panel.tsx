@@ -8,7 +8,7 @@ interface AiExplainPanelProps {
 
 const AGE_LABELS = { "6-9": "Explorer Mode 🚀", "10-13": "Builder Mode 🏗️", "14-17": "Hacker Mode ⚡" };
 
-export default function AiExplainPanel({ show, onClose, explanation, loading, ageProfile, frame }: AiExplainPanelProps) {
+export default function AiExplainPanel({ show, onClose, explanation, loading, ageProfile, frame }: Readonly<AiExplainPanelProps>) {
   return (
     <AnimatePresence>
       {show && (

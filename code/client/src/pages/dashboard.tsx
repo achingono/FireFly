@@ -3,7 +3,7 @@ import { progress, MasteryConcept } from "@/api/client";
 import { useAuth } from "@/lib/AuthContext";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Trophy, Flame, Star, BookOpen, Code2, TrendingUp, Play, Clock, CheckCircle2 } from "lucide-react";
+import { Flame, Star, Code2, TrendingUp, Play, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
 import MasteryMap from "@/components/dashboard/mastery-map";
 import RecentActivity from "@/components/dashboard/recent-activity";
@@ -160,7 +160,7 @@ export default function Dashboard() {
         <RecentActivity />
 
         {/* Quick actions — show in-progress concepts */}
-        {concepts.filter((c) => c.attempts > 0 && !c.mastered).length > 0 && (
+        {concepts.some((c) => c.attempts > 0 && !c.mastered) && (
           <div>
             <h2 className="text-lg font-bold mb-4">Continue where you left off</h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -177,7 +177,7 @@ export default function Dashboard() {
                         <span className="text-xs text-muted-foreground font-mono">{Math.round(c.score * 100)}%</span>
                       </div>
                       <h3 className="font-semibold mb-1 group-hover:text-primary transition-colors">{c.conceptName}</h3>
-                      <p className="text-xs text-muted-foreground mb-3">{c.attempts} attempt{c.attempts !== 1 ? "s" : ""}</p>
+                      <p className="text-xs text-muted-foreground mb-3">{c.attempts} attempt{c.attempts === 1 ? "" : "s"}</p>
                       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                         <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500" style={{ width: `${Math.round(c.score * 100)}%` }} />
                       </div>

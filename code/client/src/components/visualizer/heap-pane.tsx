@@ -11,12 +11,12 @@ const TYPE_COLORS = {
   default: { border: "border-white/10", bg: "bg-white/3", label: "text-slate-400" },
 };
 
-export default function HeapPane({ objects }: HeapPaneProps) {
+export default function HeapPane({ objects }: Readonly<HeapPaneProps>) {
   return (
     <div className="flex flex-col overflow-hidden bg-muted">
       <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50">
         <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Heap</span>
-        <span className="ml-auto text-[10px] text-slate-700">{objects.length} object{objects.length !== 1 ? "s" : ""}</span>
+        <span className="ml-auto text-[10px] text-slate-700">{objects.length} object{objects.length === 1 ? "" : "s"}</span>
       </div>
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
         <AnimatePresence initial={false}>

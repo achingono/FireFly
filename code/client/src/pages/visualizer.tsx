@@ -13,9 +13,7 @@ import { MOCK_TRACE } from "@/components/visualizer/mock-trace";
 import { Play, RotateCcw, ChevronLeft, Loader2 } from "lucide-react";
 import { createPageUrl } from "@/utils";
 import {
-  UIFrame,
   UITrace,
-  BackendFrame,
   BackendTrace,
   STARTER_PROGRAMS,
   ageProfileToRange,
@@ -71,11 +69,15 @@ export default function Visualizer() {
       setInitialLoading(true);
     }
     try {
-      const ex = await client.entities.exercises.get(id) as Record<string, unknown> | null;
+      const ex = await client.entities.exercises.get(id) as {
+        starterCode?: string;
+        language?: string;
+        title?: string;
+      } | null;
       if (ex) {
-        setCode((ex.starterCode as string) || "");
-        setLanguage((ex.language as string) || "python");
-        setExerciseTitle((ex.title as string) || null);
+        setCode(ex.starterCode || "");
+        setLanguage(ex.language || "python");
+        setExerciseTitle(ex.title || null);
         setActiveExerciseId(id);
       }
     } catch (err) {
@@ -142,10 +144,13 @@ export default function Visualizer() {
       }
 
       // Also load the job to get the source code
-      const job = await execution.status(id) as Record<string, unknown> | null;
+      const job = await execution.status(id) as {
+        sourceCode?: string;
+        language?: string;
+      } | null;
       if (job) {
-        setCode((job.sourceCode as string) || code);
-        setLanguage((job.language as string) || "python");
+        setCode(job.sourceCode || code);
+        setLanguage(job.language || "python");
       }
     } catch (err) {
       console.error("Failed to load job trace:", err);

@@ -9,7 +9,7 @@ interface CodePaneProps {
   language: string;
 }
 
-export default function CodePane({ code, setCode, currentLine, language }: CodePaneProps) {
+export default function CodePane({ code, setCode, currentLine, language }: Readonly<CodePaneProps>) {
   const { isPro } = useTheme();
   const editorRef = useRef<any>(null);
   const decorationsRef = useRef<any>([]);

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
-import { client, setToken, getToken, type User } from "@/api/client";
+import { client, setToken, type User } from "@/api/client";
 
 // Re-export User as AuthUser for backward compat
 export type AuthUser = User;

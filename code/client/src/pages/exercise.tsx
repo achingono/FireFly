@@ -32,6 +32,11 @@ interface TestCase {
   description: string;
 }
 
+interface ConceptSummary {
+  name: string;
+  prerequisites?: string[];
+}
+
 const HINTS_GENERIC = [
   "Think about what each line does step by step.",
   "Try running your code in the visualizer to see what happens.",
@@ -54,7 +59,7 @@ export default function ExercisePage() {
 
 // ─── Exercise List ──────────────────────────────────────────────
 
-function ExerciseList({ conceptId }: { conceptId: string | null }) {
+function ExerciseList({ conceptId }: Readonly<{ conceptId: string | null }>) {
   const location = useLocation();
   const { user } = useAuth();
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -77,9 +82,9 @@ function ExerciseList({ conceptId }: { conceptId: string | null }) {
           return;
         }
 
-        const concept = await client.entities.concepts.get(conceptId) as Record<string, unknown> | null;
+        const concept = await client.entities.concepts.get(conceptId) as ConceptSummary | null;
         if (concept) {
-          setConceptName(concept.name as string);
+          setConceptName(concept.name);
         }
 
         if (user?.id && concept) {
@@ -117,7 +122,7 @@ function ExerciseList({ conceptId }: { conceptId: string | null }) {
             <h1 className="text-3xl font-black">
               {conceptName ? `${conceptName} — Exercises` : "All Exercises"}
             </h1>
-            {!isLocked && (
+            {isLocked ? null : (
               <p className="text-slate-500 text-sm mt-1">
                 {exercises.length} exercise{exercises.length !== 1 ? "s" : ""} available
               </p>
@@ -227,7 +232,7 @@ function ExerciseList({ conceptId }: { conceptId: string | null }) {
 
 // ─── Single Exercise ────────────────────────────────────────────
 
-function SingleExercise({ exerciseId }: { exerciseId: string }) {
+function SingleExercise({ exerciseId }: Readonly<{ exerciseId: string }>) {
   const { isPro, mode } = useTheme();
   const { user } = useAuth();
   const location = useLocation();

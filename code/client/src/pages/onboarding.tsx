@@ -178,7 +178,7 @@ export default function Onboarding() {
                       min={5}
                       max={99}
                       value={age ?? ""}
-                      onChange={(e) => setAge(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                      onChange={(e) => setAge(e.target.value ? Number.parseInt(e.target.value, 10) : undefined)}
                       placeholder="e.g. 12"
                       className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-violet-500 transition-colors"
                     />

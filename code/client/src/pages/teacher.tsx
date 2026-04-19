@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ai } from "@/api/client";
-import { Users, TrendingUp, AlertCircle, BookOpen, Award, Eye, Loader2 } from "lucide-react";
+import { Users, TrendingUp, AlertCircle, Award, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 

@@ -64,7 +64,7 @@ const ThemeContext = createContext<ThemeContextType | null>(null);
 // Provider
 // ---------------------------------------------------------------------------
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
+export function ThemeProvider({ children }: Readonly<{ children: ReactNode }>) {
   const { user } = useAuth();
 
   // Resolve initial mode: localStorage → user.ageProfile → default

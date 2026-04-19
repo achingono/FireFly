@@ -19,7 +19,7 @@ const NAV = [
   { label: "Teacher", page: "TeacherDashboard", icon: Users, auth: true, role: "teacher" },
 ];
 
-const HIDDEN_NAV_PAGES = ["Auth", "Onboarding", "Visualizer"];
+const HIDDEN_NAV_PAGES = new Set(["Auth", "Onboarding", "Visualizer"]);
 
 // Theme switcher config
 const THEME_OPTIONS: { mode: AgeProfile; icon: typeof Sparkles; label: string }[] = [
@@ -28,7 +28,7 @@ const THEME_OPTIONS: { mode: AgeProfile; icon: typeof Sparkles; label: string }[
   { mode: "pro", icon: Rocket, label: "Pro" },
 ];
 
-export default function Layout({ children, currentPageName }: LayoutProps) {
+export default function Layout({ children, currentPageName }: Readonly<LayoutProps>) {
   const [user, setUser] = useState<User | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
@@ -38,7 +38,7 @@ export default function Layout({ children, currentPageName }: LayoutProps) {
     client.auth.me().then(u => setUser(u)).catch(() => {});
   }, []);
 
-  const hideNav = HIDDEN_NAV_PAGES.includes(currentPageName);
+  const hideNav = HIDDEN_NAV_PAGES.has(currentPageName);
 
   if (hideNav) return <>{children}</>;
 
