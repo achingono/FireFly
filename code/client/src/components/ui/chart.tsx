@@ -1,3 +1,5 @@
+"use client"
+
 import * as React from "react"
 import * as RechartsPrimitive from "recharts"
 
@@ -354,7 +356,7 @@ function getPayloadConfigFromPayload(
 
   return configLabelKey in config
     ? config[configLabelKey]
-    : config[key as keyof typeof config]
+    : config[key]
 }
 
 export {

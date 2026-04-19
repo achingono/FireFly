@@ -1,5 +1,3 @@
-"use client"
-
 import * as React from "react"
 import { OTPInput, OTPInputContext } from "input-otp"
 import { Minus } from "lucide-react"
@@ -62,7 +60,8 @@ const InputOTPSeparator = React.forwardRef<
   React.ElementRef<"div">,
   React.ComponentPropsWithoutRef<"div">
 >(({ ...props }, ref) => (
-  <div ref={ref} role="separator" {...props}>
+  <div ref={ref} {...props}>
+    <hr className="sr-only" />
     <Minus />
   </div>
 ))

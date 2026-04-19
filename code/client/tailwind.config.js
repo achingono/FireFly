@@ -59,16 +59,15 @@ module.exports = {
   				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
   				border: 'hsl(var(--sidebar-border))',
   				ring: 'hsl(var(--sidebar-ring))'
-			},
-			// FireFly theme colors
-			success: {
-				DEFAULT: 'hsl(var(--ff-success))',
-				foreground: 'hsl(var(--ff-success-foreground))'
-			},
-			warning: {
-				DEFAULT: 'hsl(var(--ff-warning))',
-				foreground: 'hsl(var(--ff-warning-foreground))'
-			},
+  			},
+  			success: {
+  				DEFAULT: 'hsl(var(--ff-success))',
+  				foreground: 'hsl(var(--ff-success-foreground))'
+  			},
+  			warning: {
+  				DEFAULT: 'hsl(var(--ff-warning))',
+  				foreground: 'hsl(var(--ff-warning-foreground))'
+  			}
   		},
   		keyframes: {
   			'accordion-down': {
@@ -98,7 +97,7 @@ module.exports = {
   			'ff-lg': 'var(--ff-font-size-lg)',
   			'ff-xl': 'var(--ff-font-size-xl)',
   			'ff-2xl': 'var(--ff-font-size-2xl)',
-  			'ff-heading': 'var(--ff-font-size-heading)',
+  			'ff-heading': 'var(--ff-font-size-heading)'
   		}
   	}
   },
