@@ -49,7 +49,8 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
     async function (request: FastifyRequest, reply: import("fastify").FastifyReply) {
       try {
         await request.jwtVerify();
-      } catch (_err) {
+      } catch (error_) {
+        fastify.log.warn({ err: error_ }, "JWT verification failed");
         return reply.envelopeError("Unauthorized", "Invalid or missing token", undefined, 401);
       }
     }
@@ -62,7 +63,8 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
       return async function (request: FastifyRequest, reply: import("fastify").FastifyReply) {
         try {
           await request.jwtVerify();
-        } catch (_err) {
+        } catch (error_) {
+          fastify.log.warn({ err: error_ }, "JWT verification failed");
           return reply.envelopeError("Unauthorized", "Invalid or missing token", undefined, 401);
         }
         if (!roles.includes(request.user.role)) {

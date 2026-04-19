@@ -101,8 +101,8 @@ try {
   try {
     await redis.connect();
     app.log.info("Redis connected");
-  } catch (redisErr) {
-    app.log.warn("Redis connection failed (non-fatal): " + (redisErr as Error).message);
+  } catch (error_) {
+    app.log.warn("Redis connection failed (non-fatal): " + (error_ as Error).message);
   }
 
   await app.listen({ port: env.PORT, host: "0.0.0.0" });

@@ -661,7 +661,7 @@ export async function seedExercises(
     const conceptId = conceptMap.get(ex.conceptName);
     if (!conceptId) continue;
     const { conceptName, ...exData } = ex;
-    const deterministicId = conceptId + "-ex-" + exData.title.toLowerCase().replace(/\s+/g, "-");
+    const deterministicId = conceptId + "-ex-" + exData.title.toLowerCase().replaceAll(/\s+/g, "-");
     const record = await prisma.exercise.upsert({
       where: { id: deterministicId },
       update: {

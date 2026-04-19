@@ -2,11 +2,11 @@ import prisma from "../config/database.js";
 import { Prisma } from "@prisma/client";
 
 export const BKT = {
-  pL0: 0.10,
-  pT: 0.20,
+  pL0: 0.1,
+  pT: 0.2,
   pG: 0.25,
-  pS: 0.10,
-  MASTERY_THRESHOLD: 0.80,
+  pS: 0.1,
+  MASTERY_THRESHOLD: 0.8,
 } as const;
 
 export function bktUpdate(pL: number, correct: boolean): number {

@@ -1,4 +1,4 @@
-import { FastifyPluginAsync, FastifyRequest } from "fastify";
+import { FastifyPluginAsync } from "fastify";
 import prisma from "../config/database.js";
 
 const curriculumRoutes: FastifyPluginAsync = async (fastify) => {
@@ -181,7 +181,7 @@ const curriculumRoutes: FastifyPluginAsync = async (fastify) => {
       if (!exercise) {
         return reply.envelopeError("NotFound", "Exercise not found", undefined, 404);
       }
-      const isPrivileged = ["teacher", "admin"].includes((request as FastifyRequest & { user: { role: string } }).user.role);
+      const isPrivileged = ["teacher", "admin"].includes(request.user.role);
       const { solutionCode: _solutionCode, ...publicExercise } = exercise as typeof exercise & { solutionCode?: string | null };
       return reply.envelope(isPrivileged ? exercise : publicExercise);
     }

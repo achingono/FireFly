@@ -1,6 +1,7 @@
-import { readFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { Prisma } from "@prisma/client";
 import { env } from "../config/env.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -61,6 +62,8 @@ export interface TestResult {
   passed: boolean;
   error?: string;
 }
+
+export type ExecutionStatus = "completed" | "failed" | "timeout";
 
 const ROSETTA_STDERR_FRAGMENT = "rosetta error: mmap_anonymous_rw mmap failed";
 
@@ -231,7 +234,7 @@ export async function evaluateTestCases(
   return results;
 }
 
-export function determineJobStatus(result: Judge0Result): { status: "completed" | "failed" | "timeout"; statusMessage: string } {
+export function determineJobStatus(result: Judge0Result): { status: ExecutionStatus; statusMessage: string } {
   const infrastructureError = getJudge0InfrastructureError(result);
   if (infrastructureError) {
     return { status: "failed", statusMessage: infrastructureError };
@@ -291,7 +294,7 @@ export function logJudge0Result(fastify: any, language: string, finalSource: str
 
 export function buildJobData(
   result: Judge0Result,
-  status: "completed" | "failed" | "timeout",
+  status: ExecutionStatus,
   userStdout: string | null,
   userStderr: string | null,
   statusMessage: string,
@@ -301,19 +304,22 @@ export function buildJobData(
   const stderr = infrastructureError
     ? `${infrastructureError}\n\nOriginal stderr:\n${(userStderr ?? result.stderr ?? "").trim()}`
     : userStderr ?? result.compile_output ?? (statusMessage || null);
-  const durationMs = result.time ? Math.round(parseFloat(result.time) * 1000) : null;
-  return { status, stdout: userStdout, stderr, exitCode: result.exit_code, trace: trace ? JSON.parse(JSON.stringify(trace)) : null, durationMs, memoryKb: result.memory };
+  const durationMs = result.time ? Math.round(Number.parseFloat(result.time) * 1000) : null;
+  const traceValue = trace
+    ? (structuredClone(trace) as unknown as Prisma.InputJsonValue)
+    : Prisma.DbNull;
+  return { status, stdout: userStdout, stderr, exitCode: result.exit_code, trace: traceValue, durationMs, memoryKb: result.memory };
 }
 
 export async function runTestsAndFinalizeStatus(
   exercise: { testCases: unknown } | null,
-  status: "completed" | "failed" | "timeout",
+  status: ExecutionStatus,
   sourceCode: string,
   userStdout: string | null,
   language: string,
   languageId: number,
   fastify: any
-): Promise<{ testResults: TestResult[] | null; finalStatus: "completed" | "failed" | "timeout" }> {
+): Promise<{ testResults: TestResult[] | null; finalStatus: ExecutionStatus }> {
   if (!exercise || status !== "completed") {
     return { testResults: null, finalStatus: status };
   }

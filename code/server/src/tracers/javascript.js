@@ -1,5 +1,5 @@
 'use strict';
-const vm = require('vm');
+const vm = require('node:vm');
 
 const MAX_FRAMES = 500;
 const TIMEOUT_MS = 5000;
@@ -51,7 +51,8 @@ function _repr(val) {
   if (typeof val === 'function') return 'function ' + (val.name || 'anonymous') + '()';
   try {
     return JSON.stringify(val);
-  } catch(e) {
+  } catch (error_) {
+    _capturedStderr.push('Trace stringify failed: ' + String(error_ && error_.message ? error_.message : error_));
     return String(val);
   }
 }
@@ -76,10 +77,10 @@ const _sandbox = {
       _capturedStdout.push(args.map(String).join(' '));
     }
   },
-  parseInt: parseInt,
-  parseFloat: parseFloat,
-  isNaN: isNaN,
-  isFinite: isFinite,
+  parseInt: Number.parseInt,
+  parseFloat: Number.parseFloat,
+  isNaN: Number.isNaN,
+  isFinite: Number.isFinite,
   Math: Math,
   Date: Date,
   JSON: JSON,
@@ -101,7 +102,7 @@ const _sandbox = {
   WeakSet: WeakSet,
   Symbol: Symbol,
   undefined: undefined,
-  NaN: NaN,
+  NaN: Number.NaN,
   Infinity: Infinity,
   _t: null // will be set below
 };
@@ -121,20 +122,19 @@ _sandbox._t = function(lineNum) {
   // Collect locals from sandbox (only user-defined variables)
   const locals = {};
   const keys = Object.keys(_sandbox);
-  for (let i = 0; i < keys.length; i++) {
-    const k = keys[i];
+  for (const k of keys) {
     if (_builtinKeys.has(k)) continue;
     try {
       locals[k] = _repr(_sandbox[k]);
-    } catch(e) {
+    } catch (error_) {
+      _capturedStderr.push('Trace locals capture failed for ' + k + ': ' + String(error_ && error_.message ? error_.message : error_));
       locals[k] = '<error>';
     }
   }
 
   // Build stack (single frame for top-level code)
   const stack = [];
-  for (let s = 0; s < _callStack.length; s++) {
-    const sf = _callStack[s];
+  for (const sf of _callStack) {
     stack.push({
       funcName: sf.funcName,
       line: lineNum,
@@ -161,11 +161,12 @@ try {
     filename: 'user_code.js',
     timeout: TIMEOUT_MS
   });
-} catch(e) {
-  if (e && e.code === 'ERR_SCRIPT_EXECUTION_TIMEOUT') {
+} catch (error_) {
+  _capturedStderr.push('Execution failed: ' + String(error_ && error_.message ? error_.message : error_));
+  if (error_ && error_.code === 'ERR_SCRIPT_EXECUTION_TIMEOUT') {
     _userError = { type: 'TimeoutError', message: 'Execution timed out (5s limit)' };
   } else {
-    _userError = { type: (e && e.constructor && e.constructor.name) || 'Error', message: String(e && e.message || e) };
+    _userError = { type: (error_ && error_.constructor && error_.constructor.name) || 'Error', message: String(error_ && error_.message || error_) };
   }
 }
 
@@ -173,12 +174,12 @@ try {
 if (_frames.length > 0 && !_done) {
   const finalLocals = {};
   const fkeys = Object.keys(_sandbox);
-  for (let fi = 0; fi < fkeys.length; fi++) {
-    const fk = fkeys[fi];
+  for (const fk of fkeys) {
     if (_builtinKeys.has(fk)) continue;
     try {
       finalLocals[fk] = _repr(_sandbox[fk]);
-    } catch(e) {
+    } catch (error_) {
+      _capturedStderr.push('Final locals capture failed for ' + fk + ': ' + String(error_ && error_.message ? error_.message : error_));
       finalLocals[fk] = '<error>';
     }
   }
@@ -201,4 +202,3 @@ const _output = {
 process.stdout.write('---TRACE_START---\n');
 process.stdout.write(JSON.stringify(_output));
 process.stdout.write('\n---TRACE_END---\n');
-

@@ -8,9 +8,9 @@ let oidcPublicIssuer: string = env.OIDC_ISSUER;
 export const isSecureCookie = env.NODE_ENV === "production";
 
 function durationToSeconds(duration: string): number {
-  const match = duration.match(/^(\d+)([smhd])$/);
+  const match = /^(\d+)([smhd])$/.exec(duration);
   if (!match) return 900;
-  const value = parseInt(match[1], 10);
+  const value = Number.parseInt(match[1], 10);
   switch (match[2]) {
     case "s": return value;
     case "m": return value * 60;
