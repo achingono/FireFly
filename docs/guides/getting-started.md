@@ -60,6 +60,24 @@ Judge0 uses `isolate` to sandbox code execution, which requires **cgroups v1**. 
 - [Judge0 issue #552](https://github.com/judge0/judge0/issues/552) — macOS Apple Silicon setup
 - [Docker for Mac issue #7797](https://github.com/docker/for-mac/issues/7797) — cgroups v2 compatibility
 
+### Apple Silicon Rosetta failure mode
+
+The official `judge0/judge0` image used by this repository is `amd64`-only. On Apple Silicon, Docker Desktop may run it under Rosetta emulation, which can make even trivial submissions fail with:
+
+```text
+rosetta error: mmap_anonymous_rw mmap failed, size=1000
+```
+
+If you explicitly switch FireFly back to `EXECUTOR_PROVIDER=judge0` and see that error:
+
+1. Disable **Use Rosetta for x86/amd64 emulation on Apple Silicon** in Docker Desktop.
+2. Enable **cgroups v1** using the steps above.
+3. Restart Docker Desktop and rerun `./start.sh`.
+
+The Docker Compose stack now defaults to `EXECUTOR_PROVIDER=docker`, which runs Python and JavaScript in native multi-arch Docker containers and avoids this Judge0-on-Apple-Silicon failure mode for local development.
+
+If you still need Judge0 locally after that, run FireFly on an `x86_64` Linux host or use a Judge0 build produced specifically for `arm64`.
+
 ## Quick Start with Docker Compose
 
 The fastest way to run the full platform:
@@ -78,12 +96,12 @@ docker compose up -d
 # Optional: include Ollama services (ollama + ollama-init)
 docker compose -f docker-compose.yml -f docker-compose.ollama.yml --profile ollama up -d
 
-# Seed the database with sample data
-curl -X POST http://localhost:3000/api/v1/admin/seed
-
 # Open the application
 open http://localhost:80
 ```
+
+The Docker/local bootstrap initializes the sample curriculum automatically when the database is empty.
+For local Docker runs, the server also defaults to the native Docker executor for Python and JavaScript submissions.
 
 The Docker Compose setup runs 7 services:
 - **Client** (Nginx) on port 80
@@ -156,11 +174,9 @@ npm install
 npm run dev
 ```
 
-### 4. Seed the Database
+### 4. Optional: Seed the Full Dev Dataset
 
-```bash
-curl -X POST http://localhost:3000/api/v1/admin/seed
-```
+The app already auto-initializes curriculum when `AUTO_SEED_DATA=true`. Use the admin seed endpoint only after signing in as an admin when you specifically want the extra demo users and full dev reset behavior.
 
 ### 5. Open the Application
 
@@ -226,9 +242,9 @@ After starting all services, verify everything is working:
 curl http://localhost:3000/api/v1/health
 # Expected: {"status":"success","data":{"status":"ok","timestamp":"...","version":"1.0.0"}}
 
-# Seed data
-curl -X POST http://localhost:3000/api/v1/admin/seed
-# Expected: {"status":"success","data":{"users":5,"concepts":8,"lessons":5,"exercises":10}}
+# Curriculum should be present automatically on a fresh database
+curl http://localhost:3000/api/v1/concepts
+# Expected: {"status":"success","data":[...]}
 
 # Check Judge0
 curl http://localhost:2358/about

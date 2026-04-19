@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from "fastify";
 import prisma from "../config/database.js";
+import { env } from "../config/env.js";
 import {
   LANGUAGE_IDS,
   submitToJudge0,
@@ -11,6 +12,7 @@ import {
   logJudge0Result,
   buildJobData,
 } from "../lib/judge0.js";
+import { executeWithDocker } from "../lib/docker-executor.js";
 
 const executionRoutes: FastifyPluginAsync = async (fastify) => {
   /** POST /api/v1/execution/run — Submit code for execution */
@@ -64,6 +66,9 @@ const executionRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       const finalSource = getWrappedSource(language, sourceCode);
+      const exerciseTestCases = Array.isArray(exercise?.testCases)
+        ? (exercise.testCases as Array<{ input: string; expectedOutput: string }>)
+        : [];
 
       const job = await prisma.executionJob.create({
         data: {
@@ -77,6 +82,47 @@ const executionRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       try {
+        await prisma.executionJob.update({
+          where: { id: job.id },
+          data: { status: "running" },
+        });
+
+        if (env.EXECUTOR_PROVIDER === "docker") {
+          const result = await executeWithDocker({
+            language,
+            wrappedSource: finalSource,
+            sourceCode,
+            stdin,
+            testCases: exerciseTestCases,
+          });
+
+          await prisma.executionJob.update({
+            where: { id: job.id },
+            data: {
+              status: result.status,
+              stdout: result.stdout,
+              stderr: result.stderr,
+              exitCode: result.exitCode,
+              trace: result.trace ? JSON.parse(JSON.stringify(result.trace)) : null,
+              durationMs: result.durationMs,
+              memoryKb: null,
+            },
+          });
+
+          return reply.status(201).envelope({
+            jobId: job.id,
+            status: result.status,
+            stdout: result.stdout,
+            stderr: result.stderr,
+            trace: result.trace,
+            durationMs: result.durationMs,
+            testResults: result.testResults,
+            allTestsPassed: result.testResults
+              ? result.testResults.every((testResult) => testResult.passed)
+              : null,
+          });
+        }
+
         const token = await submitToJudge0({
           source_code: finalSource,
           language_id: languageId,
@@ -88,7 +134,7 @@ const executionRoutes: FastifyPluginAsync = async (fastify) => {
 
         await prisma.executionJob.update({
           where: { id: job.id },
-          data: { judge0Token: token, status: "running" },
+          data: { judge0Token: token },
         });
 
         const result = await pollJudge0(token);

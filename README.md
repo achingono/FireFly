@@ -61,10 +61,9 @@ Open **https://localhost:9443** — accept the self-signed certificate warning.
 - Email: `admin@localhost`
 - Password: `Divide-30-Weight`
 
-> Seed sample data after first login:
-> ```bash
-> curl -X POST -k https://localhost:9443/api/v1/admin/seed
-> ```
+> Sample curriculum initializes automatically on first start.
+> The admin seed endpoint is still available after admin login if you want the full dev dataset.
+> Local Docker runs use the native Docker executor for Python and JavaScript by default.
 
 ### Prerequisites
 

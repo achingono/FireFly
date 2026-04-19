@@ -91,7 +91,6 @@ Most endpoints require JWT authentication. The server issues JWT tokens as httpO
 All endpoints except the following require authentication:
 
 - `GET /api/v1/health`
-- `POST /api/v1/admin/seed`
 - `GET /api/v1/auth/login`
 - `GET /api/v1/auth/callback`
 - `POST /api/v1/auth/refresh`
@@ -144,7 +143,7 @@ All request and response bodies use `application/json`.
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | `GET` | `/health` | No | Health check |
-| `POST` | `/admin/seed` | No | Seed database |
+| `POST` | `/admin/seed` | Admin | Seed database |
 
 ### Authentication
 

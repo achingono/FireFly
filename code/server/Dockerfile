@@ -31,6 +31,8 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+RUN apk add --no-cache docker-cli
+
 # Install only production dependencies
 COPY package.json package-lock.json* ./
 RUN npm ci --ignore-scripts --omit=dev

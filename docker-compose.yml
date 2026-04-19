@@ -193,11 +193,18 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
       LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
-      LLM_BASE_URL: http://host.docker.internal:11434
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:11434}
       LLM_MODEL: ${LLM_MODEL:-llama3.2:3b}
+      LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-300000}
       CLIENT_ORIGIN: https://${PUBLIC_HOST:-localhost}:${PROXY_HTTPS_PORT:-9443}
+      AUTO_SEED_DATA: ${AUTO_SEED_DATA:-true}
+      EXECUTOR_PROVIDER: ${EXECUTOR_PROVIDER:-docker}
+      EXECUTOR_DOCKER_WORKDIR: ${PWD}/code/server/.executor-tmp
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${PWD}/code/server/.executor-tmp:${PWD}/code/server/.executor-tmp
     depends_on:
       postgres:
         condition: service_healthy

@@ -62,6 +62,8 @@ export interface TestResult {
   error?: string;
 }
 
+const ROSETTA_STDERR_FRAGMENT = "rosetta error: mmap_anonymous_rw mmap failed";
+
 export function wrapWithJsTracer(userCode: string): string {
   const encoded = Buffer.from(userCode, "utf-8").toString("base64");
   return JS_TRACER.replace("__BASE64_CODE__", encoded);
@@ -230,6 +232,10 @@ export async function evaluateTestCases(
 }
 
 export function determineJobStatus(result: Judge0Result): { status: "completed" | "failed" | "timeout"; statusMessage: string } {
+  const infrastructureError = getJudge0InfrastructureError(result);
+  if (infrastructureError) {
+    return { status: "failed", statusMessage: infrastructureError };
+  }
   if (result.status.id === 5) {
     return { status: "timeout", statusMessage: "Time Limit Exceeded" };
   }
@@ -243,6 +249,15 @@ export function determineJobStatus(result: Judge0Result): { status: "completed" 
     return { status: "failed", statusMessage: `Judge0 Status ${result.status.id}: ${result.status.description}` };
   }
   return { status: "completed", statusMessage: "" };
+}
+
+export function getJudge0InfrastructureError(result: Judge0Result): string | null {
+  const stderr = result.stderr?.trim() ?? "";
+  if (!stderr.includes(ROSETTA_STDERR_FRAGMENT)) {
+    return null;
+  }
+
+  return "Code execution is unavailable because Judge0 is running under Rosetta emulation on an Apple Silicon Docker host. Disable Rosetta for Docker Desktop, enable cgroups v1, and follow docs/guides/getting-started.md before retrying.";
 }
 
 export function extractTraceAndStdout(
@@ -282,7 +297,10 @@ export function buildJobData(
   statusMessage: string,
   trace: TraceOutput | null,
 ) {
-  const stderr = userStderr ?? result.compile_output ?? (statusMessage || null);
+  const infrastructureError = getJudge0InfrastructureError(result);
+  const stderr = infrastructureError
+    ? `${infrastructureError}\n\nOriginal stderr:\n${(userStderr ?? result.stderr ?? "").trim()}`
+    : userStderr ?? result.compile_output ?? (statusMessage || null);
   const durationMs = result.time ? Math.round(parseFloat(result.time) * 1000) : null;
   return { status, stdout: userStdout, stderr, exitCode: result.exit_code, trace: trace ? JSON.parse(JSON.stringify(trace)) : null, durationMs, memoryKb: result.memory };
 }

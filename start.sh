@@ -88,15 +88,43 @@ if [ $ELAPSED -ge $TIMEOUT ]; then
   echo "  Check logs:   docker compose logs -f server"
 fi
 
-# ── Seed sample data ──────────────────────────────────────────────────────────
+# ── Initial curriculum ────────────────────────────────────────────────────────
 echo ""
-echo "Seeding sample curriculum data..."
-SEED_STATUS=$(curl -sk -o /dev/null -w "%{http_code}" -X POST "https://localhost:9443/api/v1/admin/seed" 2>/dev/null || echo "000")
-if [ "$SEED_STATUS" = "200" ] || [ "$SEED_STATUS" = "201" ]; then
-  echo -e "${GREEN}✓ Sample data seeded${RESET}"
+echo -e "${GREEN}✓ Sample curriculum initializes automatically on first start${RESET}"
+
+# ── Execution runtime smoke test ──────────────────────────────────────────────
+echo ""
+echo "Checking code execution runtime..."
+EXECUTOR_PROVIDER=$(grep -E '^EXECUTOR_PROVIDER=' .env 2>/dev/null | tail -n1 | cut -d= -f2)
+EXECUTOR_PROVIDER=${EXECUTOR_PROVIDER:-docker}
+
+if [ "$EXECUTOR_PROVIDER" = "docker" ]; then
+  EXEC_SMOKE=$(docker run --rm --network none --memory 128m --cpus 1 --pids-limit 64 python:3.12-alpine python3 -c "print(1)" 2>/dev/null || true)
+  if [ "$EXEC_SMOKE" = "1" ]; then
+    echo -e "${GREEN}✓ Native Docker executor is healthy${RESET}"
+  else
+    echo -e "${YELLOW}⚠ Native Docker executor smoke test did not pass cleanly.${RESET}"
+    echo "  Raw response: ${EXEC_SMOKE}"
+  fi
 else
-  echo -e "${YELLOW}⚠ Seed returned HTTP ${SEED_STATUS} — you can seed manually:${RESET}"
-  echo "  curl -X POST -k https://localhost:9443/api/v1/admin/seed"
+  JUDGE0_SMOKE=$(docker compose exec judge0 sh -lc "printf '%s' '{\"source_code\":\"print(1)\",\"language_id\":71}' >/tmp/judge0-smoke.json && wget -qO- --header='Content-Type: application/json' --post-file=/tmp/judge0-smoke.json 'http://127.0.0.1:2358/submissions?base64_encoded=false&wait=true'" 2>/dev/null || true)
+  if echo "$JUDGE0_SMOKE" | grep -q '"status":{"id":3'; then
+    echo -e "${GREEN}✓ Judge0 runtime is healthy${RESET}"
+  elif echo "$JUDGE0_SMOKE" | grep -qi "rosetta error"; then
+    DOCKER_ARCH=$(docker version --format '{{.Architecture}}' 2>/dev/null || echo "unknown")
+    CGROUP_VERSION=$(docker info --format '{{.CgroupVersion}}' 2>/dev/null || echo "unknown")
+    echo -e "${RED}✗ Judge0 execution is unavailable in this Docker setup${RESET}"
+    echo "  Judge0 is running under Rosetta emulation on an Apple Silicon host."
+    echo "  Docker server arch: ${DOCKER_ARCH}"
+    echo "  Cgroup version:    ${CGROUP_VERSION}"
+    echo "  Fix:"
+    echo "    1. Disable 'Use Rosetta for x86/amd64 emulation on Apple Silicon' in Docker Desktop."
+    echo "    2. Enable cgroups v1 as documented in docs/guides/getting-started.md."
+    echo "    3. Restart Docker Desktop and rerun ./start.sh."
+  else
+    echo -e "${YELLOW}⚠ Judge0 smoke test did not pass cleanly.${RESET}"
+    echo "  Raw response: ${JUDGE0_SMOKE}"
+  fi
 fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────

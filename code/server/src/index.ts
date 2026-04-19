@@ -14,11 +14,36 @@ import llmRoutes from "./routes/llm.js";
 import analyticsRoutes from "./routes/analytics.js";
 import prisma from "./config/database.js";
 import redis from "./config/redis.js";
+import { runCurriculumSeed } from "./data/seed.js";
 
 const app = Fastify({
   logger: true,
   genReqId: () => "", // overridden by request-id plugin
 });
+
+async function initializeCurriculum() {
+  if (!env.AUTO_SEED_DATA) {
+    return;
+  }
+
+  const [conceptCount, lessonCount, exerciseCount] = await prisma.$transaction([
+    prisma.concept.count(),
+    prisma.lesson.count(),
+    prisma.exercise.count(),
+  ]);
+
+  if (conceptCount > 0 || lessonCount > 0 || exerciseCount > 0) {
+    app.log.info(
+      { conceptCount, lessonCount, exerciseCount },
+      "Skipping automatic curriculum initialization because data already exists"
+    );
+    return;
+  }
+
+  app.log.info("Curriculum is empty; seeding initial curriculum data");
+  const counts = await runCurriculumSeed(prisma);
+  app.log.info({ counts }, "Initial curriculum data seeded");
+}
 
 // Register plugins
 await app.register(cors, {
@@ -71,6 +96,7 @@ for (const signal of signals) {
 try {
   await prisma.$connect();
   app.log.info("Prisma connected to PostgreSQL");
+  await initializeCurriculum();
 
   try {
     await redis.connect();

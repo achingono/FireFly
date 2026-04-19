@@ -294,13 +294,8 @@ cd code/server && npx prisma migrate deploy
 
 ### Seeding Data
 
-```bash
-# Seed via API
-curl -X POST http://localhost:3000/api/v1/admin/seed
-
-# Or through Docker
-docker compose exec server curl -X POST http://localhost:3000/api/v1/admin/seed
-```
+Curriculum auto-initializes on an empty database when `AUTO_SEED_DATA=true`.
+The `/api/v1/admin/seed` endpoint remains available only to authenticated admin sessions if you want the full dev dataset/reset behavior.
 
 ### Prisma Studio
 

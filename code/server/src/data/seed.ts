@@ -720,3 +720,19 @@ export async function runSeed(prisma: PrismaClient): Promise<{
     exercises: await prisma.exercise.count(),
   };
 }
+
+export async function runCurriculumSeed(prisma: PrismaClient): Promise<{
+  concepts: number;
+  lessons: number;
+  exercises: number;
+}> {
+  const conceptMap = await seedConcepts(prisma);
+  const lessonRecords = await seedLessons(prisma, conceptMap);
+  await seedExercises(prisma, conceptMap, lessonRecords);
+
+  return {
+    concepts: await prisma.concept.count(),
+    lessons: await prisma.lesson.count(),
+    exercises: await prisma.exercise.count(),
+  };
+}

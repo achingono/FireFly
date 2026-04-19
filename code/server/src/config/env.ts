@@ -23,7 +23,16 @@ const envSchema = z.object({
   LLM_PROVIDER: z.string().default("lmstudio"),
   LLM_BASE_URL: z.string().default("http://localhost:1234"),
   LLM_MODEL: z.string().default("default"),
+  LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(300000),
   CLIENT_ORIGIN: z.string().default("http://localhost:5173"),
+  EXECUTOR_PROVIDER: z.enum(["judge0", "docker"]).default("judge0"),
+  EXECUTOR_DOCKER_PYTHON_IMAGE: z.string().default("python:3.12-alpine"),
+  EXECUTOR_DOCKER_NODE_IMAGE: z.string().default("node:20-alpine"),
+  EXECUTOR_DOCKER_WORKDIR: z.string().default("/executor-tmp"),
+  AUTO_SEED_DATA: z
+    .string()
+    .optional()
+    .transform((value) => value === "true"),
 });
 
 export type Env = z.infer<typeof envSchema>;

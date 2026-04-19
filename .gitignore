@@ -429,6 +429,7 @@ docker-compose.override.yml
 # Prisma
 code/server/prisma/*.db
 code/server/prisma/migrations/**/migration_lock.toml
+code/server/.executor-tmp/
 
 # IDE
 .idea/

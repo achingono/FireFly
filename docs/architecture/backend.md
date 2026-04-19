@@ -155,7 +155,7 @@ JWT payload shape:
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `POST` | `/api/v1/admin/seed` | No | Idempotent database seed |
+| `POST` | `/api/v1/admin/seed` | Admin | Idempotent database seed |
 
 Seeds 5 users, 8 concepts (with prerequisite chain), 5 lessons, and 10 exercises.
 

@@ -23,7 +23,7 @@ export async function callLLM(
   const { maxTokens = 512, temperature = 0.7 } = options;
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 120_000);
+  const timeout = setTimeout(() => controller.abort(), env.LLM_TIMEOUT_MS);
 
   try {
   if (env.LLM_PROVIDER === "ollama") {
