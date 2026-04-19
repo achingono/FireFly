@@ -2,7 +2,12 @@ import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
 import type { MasteryUpdateResponse } from "@/api/client";
 
-export function MasteryFeedbackPanel({ feedback, isPro }: { feedback: MasteryUpdateResponse; isPro: boolean }) {
+interface MasteryFeedbackPanelProps {
+  feedback: MasteryUpdateResponse;
+  isPro: boolean;
+}
+
+export function MasteryFeedbackPanel({ feedback, isPro }: Readonly<MasteryFeedbackPanelProps>) {
   return (
     <div className="p-4 space-y-2">
       <div className="flex items-center gap-3">

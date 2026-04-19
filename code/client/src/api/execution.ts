@@ -11,7 +11,7 @@ export const execution = {
     status: string;
     stdout: string | null;
     stderr: string | null;
-    trace: unknown | null;
+    trace: unknown;
     durationMs: number | null;
     testResults?: Array<{
       input: string;
@@ -27,7 +27,7 @@ export const execution = {
       status: string;
       stdout: string | null;
       stderr: string | null;
-      trace: unknown | null;
+      trace: unknown;
       durationMs: number | null;
       testResults?: Array<{
         input: string;

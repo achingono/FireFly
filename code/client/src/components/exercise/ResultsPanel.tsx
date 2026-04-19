@@ -8,17 +8,19 @@ interface NextChallenge {
   title: string;
 }
 
+interface ResultsPanelProps {
+  results: ExerciseResult;
+  isPro: boolean;
+  nextChallenge?: NextChallenge | null;
+  backTo: string;
+}
+
 export function ResultsPanel({
   results,
   isPro,
   nextChallenge,
   backTo,
-}: {
-  results: ExerciseResult;
-  isPro: boolean;
-  nextChallenge?: NextChallenge | null;
-  backTo: string;
-}) {
+}: Readonly<ResultsPanelProps>) {
   const passedMessage = isPro ? "Execution complete \u2014 0 errors." : "Code executed successfully! \ud83c\udf89";
   const failedMessage = isPro ? "Execution failed \u2014 see output." : "Execution failed \u2014 check the output below.";
   return (

@@ -46,7 +46,7 @@ interface ConceptCardProps {
   index: number;
 }
 
-export function ConceptCard({ concept, color, isUnlocked, mastery, unmetPrereqs, index }: ConceptCardProps) {
+export function ConceptCard({ concept, color, isUnlocked, mastery, unmetPrereqs, index }: Readonly<ConceptCardProps>) {
   const icon = getConceptIcon(concept.name);
   const diffColor = DIFF_COLORS[concept.difficulty as keyof typeof DIFF_COLORS] ?? "slate";
   const lessonCount = concept._count?.lessons ?? 0;
@@ -61,7 +61,7 @@ export function ConceptCard({ concept, color, isUnlocked, mastery, unmetPrereqs,
     }`}>
       <div className="flex items-start justify-between mb-4">
         <div
-          className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${!isUnlocked ? "grayscale" : ""}`}
+          className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${isUnlocked ? "" : "grayscale"}`}
           style={{ backgroundColor: color + "22", border: `1px solid ${color}44` }}
         >
           {isUnlocked ? icon : "🔒"}
@@ -80,7 +80,7 @@ export function ConceptCard({ concept, color, isUnlocked, mastery, unmetPrereqs,
           )}
         </div>
       </div>
-      <h3 className={`font-semibold text-base mb-1.5 ${!isUnlocked ? "text-slate-500" : ""}`}>
+      <h3 className={`font-semibold text-base mb-1.5 ${isUnlocked ? "" : "text-slate-500"}`}>
         {concept.name}
       </h3>
       <p className="text-slate-500 text-xs leading-relaxed flex-1 mb-4">
@@ -114,7 +114,7 @@ export function ConceptCard({ concept, color, isUnlocked, mastery, unmetPrereqs,
         {lessonCount > 0 && (
           <span className="flex items-center gap-1 text-xs text-slate-500">
             <Clock className="w-3 h-3" />
-            {lessonCount} lesson{lessonCount !== 1 ? "s" : ""}
+            {lessonCount} lesson{lessonCount === 1 ? "" : "s"}
           </span>
         )}
         {isMastered && (

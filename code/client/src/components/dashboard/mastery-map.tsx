@@ -22,7 +22,7 @@ const STATUS_CONFIG = {
   locked: { color: "from-muted to-muted", text: "text-muted-foreground/50", icon: Lock, border: "border-border/50" },
 };
 
-export default function MasteryMap({ progress }: MasteryMapProps) {
+export default function MasteryMap({ progress }: Readonly<MasteryMapProps>) {
   if (progress.length === 0) {
     return (
       <div className="rounded-2xl border border-border bg-card p-6">
@@ -49,7 +49,7 @@ export default function MasteryMap({ progress }: MasteryMapProps) {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.06 }}
-              className={`rounded-xl border ${sc.border} bg-card p-4 relative overflow-hidden ${p.locked ? "opacity-50" : ""} ${!p.locked ? "cursor-pointer hover:shadow-lg hover:scale-105 transition-all" : ""}`}
+              className={`rounded-xl border ${sc.border} bg-card p-4 relative overflow-hidden ${p.locked ? "opacity-50" : "cursor-pointer hover:shadow-lg hover:scale-105 transition-all"}`}
             >
               <div className={`absolute inset-0 bg-gradient-to-br ${sc.color} opacity-5`} />
               <div className="relative">
@@ -73,12 +73,12 @@ export default function MasteryMap({ progress }: MasteryMapProps) {
             </motion.div>
           );
           
-          return !p.locked ? (
+          return p.locked ? (
+            card
+          ) : (
             <Link key={p.conceptId} to={createPageUrl(`Exercise?conceptId=${p.conceptId}`)}>
               {card}
             </Link>
-          ) : (
-            card
           );
         })}
       </div>

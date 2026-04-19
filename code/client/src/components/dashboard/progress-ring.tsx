@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 
 interface ProgressRingProps { progress: number; masteredCount: number; total: number; }
 
-export default function ProgressRing({ progress, masteredCount, total }: ProgressRingProps) {
+export default function ProgressRing({ progress, masteredCount, total }: Readonly<ProgressRingProps>) {
   const r = 70;
   const circ = 2 * Math.PI * r;
   const dash = (progress / 100) * circ;
