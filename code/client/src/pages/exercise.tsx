@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Editor from "@monaco-editor/react";
 import { client, execution, ai, MasteryUpdateResponse } from "@/api/client";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { ChevronLeft, Play, Lightbulb, Loader2, Eye, ArrowLeft, Lock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -55,6 +55,7 @@ export default function ExercisePage() {
 // ─── Exercise List ──────────────────────────────────────────────
 
 function ExerciseList({ conceptId }: { conceptId: string | null }) {
+  const location = useLocation();
   const { user } = useAuth();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
@@ -188,7 +189,10 @@ function ExerciseList({ conceptId }: { conceptId: string | null }) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
                 >
-                  <Link to={createPageUrl(`Exercise?id=${ex.id}`)}>
+                  <Link
+                    to={createPageUrl(`Exercise?id=${ex.id}`)}
+                    state={{ from: `${location.pathname}${location.search}` }}
+                  >
                     <div className="group rounded-2xl border border-border bg-muted/30 p-5 hover:bg-muted/60 hover:border-border/80 transition-all cursor-pointer">
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="font-semibold text-base">{ex.title}</h3>
@@ -226,6 +230,7 @@ function ExerciseList({ conceptId }: { conceptId: string | null }) {
 function SingleExercise({ exerciseId }: { exerciseId: string }) {
   const { isPro, mode } = useTheme();
   const { user } = useAuth();
+  const location = useLocation();
   const [exercise, setExercise] = useState<Exercise | null>(null);
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(true);
@@ -237,10 +242,12 @@ function SingleExercise({ exerciseId }: { exerciseId: string }) {
   const [aiHint, setAiHint] = useState<string | null>(null);
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [masteryFeedback, setMasteryFeedback] = useState<MasteryUpdateResponse | null>(null);
+  const [nextExercise, setNextExercise] = useState<Pick<Exercise, "id" | "title"> | null>(null);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
+      setNextExercise(null);
       try {
         const data = await client.entities.exercises.get(exerciseId) as Exercise | null;
         if (data) {
@@ -252,6 +259,16 @@ function SingleExercise({ exerciseId }: { exerciseId: string }) {
             setTestCases(Array.isArray(tc) ? tc : []);
           } catch {
             setTestCases([]);
+          }
+
+          const currentConceptId = data.lessons?.[0]?.lesson?.concept?.id;
+          if (currentConceptId) {
+            const conceptExercises = await client.entities.exercises.list({
+              conceptId: currentConceptId,
+            }) as Exercise[];
+            const currentIndex = conceptExercises.findIndex((item) => item.id === data.id);
+            const candidate = currentIndex >= 0 ? conceptExercises[currentIndex + 1] : null;
+            setNextExercise(candidate ? { id: candidate.id, title: candidate.title } : null);
           }
         }
       } catch (err) {
@@ -349,25 +366,31 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
   }
 
   const fileExtension = FILE_EXT_MAP[exercise.language] ?? exercise.language;
+  const locationState = location.state as { from?: string } | null;
+  const conceptId = exercise.lessons?.[0]?.lesson?.concept?.id;
+  const fallbackBackTo = conceptId
+    ? createPageUrl(`Exercise?conceptId=${conceptId}`)
+    : createPageUrl("Curriculum");
+  const backTo = locationState?.from ?? fallbackBackTo;
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* Header */}
-      <div className="flex items-center gap-4 px-5 py-4 border-b border-border bg-muted">
-        <Link to={createPageUrl("Curriculum")} className="text-muted-foreground hover:text-foreground">
+      <div className="flex flex-wrap items-start gap-3 px-5 py-4 border-b border-border bg-muted">
+        <Link to={backTo} className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground">
           <ChevronLeft className="w-5 h-5" />
         </Link>
-        <div>
-          <h1 className="font-semibold">{exercise.title}</h1>
+        <div className="min-w-0 flex-1">
+          <h1 className="font-semibold break-words">{exercise.title}</h1>
           <div className="flex items-center gap-3 text-xs text-slate-500">
             <span className="capitalize">{exercise.difficulty}</span>
             <span>•</span>
             <span>{exercise.language}</span>
           </div>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex w-full shrink-0 items-center justify-end gap-2 sm:ml-auto sm:w-auto">
           <Link to={createPageUrl(`Visualizer?exerciseId=${exercise.id}`)}>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-muted text-sm text-muted-foreground hover:bg-accent transition-colors">
+            <button className="flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 rounded-lg border border-border bg-muted text-sm text-muted-foreground hover:bg-accent transition-colors">
               <Eye className="w-3.5 h-3.5" />
               Visualize
             </button>
@@ -375,7 +398,7 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-sm font-semibold disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 whitespace-nowrap px-4 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-sm font-semibold disabled:opacity-50 transition-colors"
           >
             {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
             {isPro ? "Execute" : "Run"}
@@ -383,7 +406,7 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-65px)]">
+      <div className="flex flex-1 min-h-0 flex-col lg:flex-row">
         {/* Left — prompt + results */}
         <div className="lg:w-96 border-r border-border overflow-y-auto p-5 space-y-5">
           <div>
@@ -459,7 +482,7 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="mt-3 p-3 rounded-xl bg-violet-500/10 border border-violet-500/25 text-sm text-slate-300"
+                className="mt-3 p-3 rounded-xl bg-violet-500/10 border border-violet-500/25 text-sm text-foreground"
               >
                 {aiHint}
               </motion.div>
@@ -500,7 +523,7 @@ Give a short, encouraging hint (1-2 sentences) without giving away the solution.
                 exit={{ height: 0, opacity: 0 }}
                 className="border-t border-border bg-muted overflow-hidden"
               >
-                <ResultsPanel results={results} isPro={isPro} />
+                <ResultsPanel results={results} isPro={isPro} nextChallenge={nextExercise} backTo={backTo} />
               </motion.div>
             )}
           </AnimatePresence>

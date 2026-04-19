@@ -1,9 +1,24 @@
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { CheckCircle2, XCircle, Eye } from "lucide-react";
+import { CheckCircle2, XCircle, Eye, ArrowRight } from "lucide-react";
 import type { ExerciseResult } from "./helpers";
 
-export function ResultsPanel({ results, isPro }: { results: ExerciseResult; isPro: boolean }) {
+interface NextChallenge {
+  id: string;
+  title: string;
+}
+
+export function ResultsPanel({
+  results,
+  isPro,
+  nextChallenge,
+  backTo,
+}: {
+  results: ExerciseResult;
+  isPro: boolean;
+  nextChallenge?: NextChallenge | null;
+  backTo: string;
+}) {
   const passedMessage = isPro ? "Execution complete \u2014 0 errors." : "Code executed successfully! \ud83c\udf89";
   const failedMessage = isPro ? "Execution failed \u2014 see output." : "Execution failed \u2014 check the output below.";
   return (
@@ -62,6 +77,16 @@ export function ResultsPanel({ results, isPro }: { results: ExerciseResult; isPr
         >
           <Eye className="w-3.5 h-3.5" />
           View execution trace in Visualizer
+        </Link>
+      )}
+      {results.status === "passed" && nextChallenge && (
+        <Link
+          to={createPageUrl(`Exercise?id=${nextChallenge.id}`)}
+          state={{ from: backTo }}
+          className="inline-flex items-center gap-2 mt-3 ml-4 px-3 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-xs font-semibold text-white transition-colors"
+        >
+          Next Challenge
+          <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       )}
     </div>
