@@ -91,6 +91,30 @@ const masteryRoutes: FastifyPluginAsync = async (fastify) => {
         where: { userId_conceptId: { userId, conceptId } },
       });
 
+      const history = Array.isArray(record?.history)
+        ? (record.history as Array<{ exerciseId?: string | null; correct?: boolean }>)
+        : [];
+      const alreadySolvedExercise = Boolean(
+        exerciseId &&
+        correct &&
+        history.some((entry) => entry.exerciseId === exerciseId && entry.correct === true)
+      );
+
+      if (alreadySolvedExercise) {
+        const currentScore = record?.score ?? BKT.pL0;
+        return reply.envelope({
+          conceptId,
+          previousScore: currentScore,
+          newScore: currentScore,
+          delta: 0,
+          attempts: record?.attempts ?? 0,
+          mastered: currentScore >= BKT.MASTERY_THRESHOLD,
+          justMastered: false,
+          newlyUnlocked: [],
+          masteryThreshold: BKT.MASTERY_THRESHOLD,
+        });
+      }
+
       const previousScore = record?.score ?? BKT.pL0;
       const newScore = bktUpdate(previousScore, correct);
       const now = new Date();
